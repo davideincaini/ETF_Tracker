@@ -47,6 +47,7 @@ export default function PacPage({ tickers, holdings, prices, cashResiduo, onConf
           tickers={tickers}
           holdings={holdings}
           prices={prices}
+          cashResiduo={cashResiduo}
           onTrade={onManualTrade}
         />
       )}

@@ -48,10 +48,14 @@ export function usePortfolio() {
       const cost = shares * price
       const txn = { ticker, name, shares, cost, type, date: new Date().toISOString() }
 
+      const newCashResiduo = type === 'buy'
+        ? prev.cashResiduo - (cost || 0)
+        : prev.cashResiduo + (cost || 0)
+
       return {
         holdings,
         transactions: [...prev.transactions, txn],
-        cashResiduo: prev.cashResiduo,
+        cashResiduo: newCashResiduo,
       }
     })
   }, [])

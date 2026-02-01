@@ -3,7 +3,7 @@ import { ArrowDownCircle, ArrowUpCircle, Check } from 'lucide-react'
 
 const COLORS = ['#5856D6', '#34C759', '#FF9500', '#FF2D55']
 
-export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
+export default function ManualTrade({ tickers, holdings, prices, cashResiduo = 0, onTrade }) {
   const [selected, setSelected] = useState(null)
   const [side, setSide] = useState('buy')
   const [qty, setQty] = useState('')
@@ -14,7 +14,11 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
     const t = tickers.find((tk) => tk.ticker === selected)
     const price = prices[selected] || 0
     if (price === 0) return
+
+    // Validations
     if (side === 'sell' && shares > (holdings[selected] || 0)) return
+    if (side === 'buy' && (shares * price) > cashResiduo) return
+
     onTrade(selected, t.name, shares, price, side)
     setQty('')
     setSelected(null)
@@ -22,6 +26,17 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Cash Display */}
+      <div
+        className="rounded-3xl p-5 flex items-center justify-between"
+        style={{ background: 'var(--card)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
+      >
+        <div>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Available Cash</p>
+          <p className="text-xl font-bold">€{cashResiduo.toFixed(2)}</p>
+        </div>
+      </div>
+
       {/* Buy / Sell toggle */}
       <div
         className="rounded-3xl p-1.5 flex"
@@ -130,7 +145,12 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
             </div>
             <button
               onClick={handleConfirm}
-              disabled={!qty || parseInt(qty) <= 0 || (side === 'sell' && parseInt(qty) > (holdings[selected] || 0))}
+              disabled={
+                !qty ||
+                parseInt(qty) <= 0 ||
+                (side === 'sell' && parseInt(qty) > (holdings[selected] || 0)) ||
+                (side === 'buy' && (parseInt(qty) * prices[selected]) > cashResiduo)
+              }
               className="px-6 py-3 rounded-2xl text-sm font-bold text-white border-none cursor-pointer disabled:opacity-40 transition-opacity"
               style={{ background: side === 'buy' ? '#34C759' : '#FF3B30' }}
             >
@@ -138,15 +158,19 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
             </button>
           </div>
           {qty && prices[selected] && (
-            <p className="text-xs mt-3" style={{ color: 'var(--text-secondary)' }}>
-              Total: <strong>€{(parseInt(qty || 0) * prices[selected]).toFixed(2)}</strong>
+            <div className="text-xs mt-3 flex flex-col gap-1" style={{ color: 'var(--text-secondary)' }}>
+              <p>Total: <strong>€{(parseInt(qty || 0) * prices[selected]).toFixed(2)}</strong></p>
               {side === 'sell' && parseInt(qty) > (holdings[selected] || 0) && (
                 <span style={{ color: '#FF3B30' }}> — exceeds holdings</span>
               )}
-            </p>
+              {side === 'buy' && (parseInt(qty) * prices[selected]) > cashResiduo && (
+                <span style={{ color: '#FF3B30' }}> — exceeds available cash</span>
+              )}
+            </div>
           )}
         </div>
       )}
     </div>
   )
 }
+
