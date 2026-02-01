@@ -1,0 +1,30 @@
+[
+    {
+        "ticker": "EM710.MI",
+        "isin": "LU1681003024",
+        "name": "Amundi Euro Government Bond 7-10Y UCITS ETF Acc.",
+        "category": "Bond",
+        "target_weight": 0.30
+    },
+    {
+        "ticker": "XDPU.MI",
+        "isin": "IE000Z9S9X10",
+        "name": "Xtrackers S&P 500 UCITS ETF 4C",
+        "category": "Equity",
+        "target_weight": 0.35
+    },
+    {
+        "ticker": "EXUS.MI",
+        "isin": "IE0006WW1TQ4",
+        "name": "Xtrackers MSCI World ex USA UCITS ETF 1C",
+        "category": "Equity",
+        "target_weight": 0.28
+    },
+    {
+        "ticker": "EIMI.MI",
+        "isin": "IE00BKM4GZ66",
+        "name": "iShares Core MSCI Emerging Markets IMI UCITS ETF (Acc)",
+        "category": "Equity",
+        "target_weight": 0.07
+    }
+]
