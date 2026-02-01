@@ -137,60 +137,58 @@ export default function AllocationChart({ tickers, weights, holdings }) {
         </ResponsiveContainer>
       ) : (
         /* Pie charts: Portfolio or Equity */
-      ): (
-          /* Pie charts: Portfolio or Equity */
-          !hasPieData ? (
-      <div className="flex flex-col items-center justify-center py-10" style={{ color: 'var(--text-secondary)' }}>
-        <div className="w-12 h-12 rounded-full flex items-center justify-center mb-2" style={{ background: '#F0F0F0' }}>
-          <div className="w-6 h-6 rounded-full border-2 border-current opacity-30" />
-        </div>
-        <p className="text-xs font-medium">No assets to display</p>
-      </div>
-      ) : (
-      <div className="flex items-center gap-4">
-        <div className="w-[140px] h-[140px] shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={38}
-                outerRadius={65}
-                paddingAngle={2}
-                dataKey="value"
-                strokeWidth={0}
-              >
-                {pieData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex-1 flex flex-col gap-2">
-          {pieData.map((entry) => (
-            <div key={entry.name} className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ background: entry.color }}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold">{entry.name}</span>
-                  <span className="text-xs font-bold">{entry.value}%</span>
-                </div>
-                {entry.qty > 0 && (
-                  <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
-                    {entry.qty} shares
-                  </p>
-                )}
-              </div>
+        !hasPieData ? (
+          <div className="flex flex-col items-center justify-center py-10" style={{ color: 'var(--text-secondary)' }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-2" style={{ background: '#F0F0F0' }}>
+              <div className="w-6 h-6 rounded-full border-2 border-current opacity-30" />
             </div>
-          ))}
-        </div>
-      </div>
-      )
+            <p className="text-xs font-medium">No assets to display</p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4">
+            <div className="w-[140px] h-[140px] shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={38}
+                    outerRadius={65}
+                    paddingAngle={2}
+                    dataKey="value"
+                    strokeWidth={0}
+                  >
+                    {pieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex-1 flex flex-col gap-2">
+              {pieData.map((entry) => (
+                <div key={entry.name} className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ background: entry.color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold">{entry.name}</span>
+                      <span className="text-xs font-bold">{entry.value}%</span>
+                    </div>
+                    {entry.qty > 0 && (
+                      <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+                        {entry.qty} shares
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
       )}
     </div>
   )
