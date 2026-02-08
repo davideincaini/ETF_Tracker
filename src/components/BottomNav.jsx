@@ -1,8 +1,9 @@
-import { LayoutDashboard, Calculator, Settings } from 'lucide-react'
+import { LayoutDashboard, Calculator, Settings, TrendingUp } from 'lucide-react'
 
 const tabs = [
   { id: 'dashboard', label: 'Portfolio', icon: LayoutDashboard },
   { id: 'pac', label: 'PAC', icon: Calculator },
+  { id: 'simulator', label: 'Simulator', icon: TrendingUp },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 

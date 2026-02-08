@@ -135,6 +135,46 @@ function getLastKnown(key) {
 // We need to update fetchAllPrices to use getLastKnown logic inline or via helper
 // I'll rewrite fetchAllPrices above to manually read it.
 
+// Fetch maximum available history for Monte Carlo simulations
+export async function fetchMaxHistory(ticker, interval = '1d') {
+  const json = await fetchViaProxy(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=max&interval=${interval}`
+  )
+  const result = json.chart?.result?.[0]
+  if (!result) throw new Error(`No max history data for ${ticker}`)
+  const timestamps = result.timestamp || []
+  const closes = result.indicators?.quote?.[0]?.close || []
+
+  return timestamps.map((ts, i) => ({
+    date: ts * 1000,
+    price: closes[i],
+  })).filter((d) => d.price != null)
+}
+
+export async function fetchAllMaxHistory(tickers) {
+  const cacheKey = `${HISTORY_CACHE_KEY}_max`
+  const cached = getCached(cacheKey)
+  if (cached && tickers.every((t) => t.ticker in cached)) return cached
+
+  const history = cached || {}
+
+  await Promise.allSettled(
+    tickers.map(async (t) => {
+      try {
+        history[t.ticker] = await fetchMaxHistory(t.ticker)
+        console.log(`Loaded ${history[t.ticker].length} data points for ${t.ticker}`)
+      } catch (e) {
+        console.warn(`Max history fetch failed for ${t.ticker}:`, e)
+      }
+    })
+  )
+
+  if (Object.keys(history).length > 0) {
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: history }))
+  }
+  return history
+}
+
 export function clearPriceCache() {
   localStorage.removeItem(CACHE_KEY)
   // Also clear history caches

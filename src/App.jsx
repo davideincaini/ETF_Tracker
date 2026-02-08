@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import BottomNav from './components/BottomNav'
 import Dashboard from './pages/Dashboard'
 import PacPage from './pages/PacPage'
+import MonteCarloPage from './pages/MonteCarloPage'
 import { usePortfolio } from './hooks/usePortfolio'
 import { fetchAllPrices, fetchAllHistory, clearPriceCache } from './utils/api'
 import tickers from './data/tickers.json'
@@ -116,6 +117,15 @@ export default function App() {
           onConfirm={portfolio.addTransactions}
           onManualTrade={portfolio.manualTrade}
           loading={loading}
+        />
+      )}
+      {tab === 'simulator' && (
+        <MonteCarloPage
+          tickers={tickers}
+          holdings={portfolio.holdings}
+          prices={prices}
+          getPortfolioValue={portfolio.getPortfolioValue}
+          getWeights={portfolio.getWeights}
         />
       )}
       {tab === 'settings' && (
