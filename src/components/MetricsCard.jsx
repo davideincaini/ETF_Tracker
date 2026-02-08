@@ -9,11 +9,12 @@ export default function MetricsCard({ tickers, holdings, prices, transactions, h
   const totalPL = totalValue - totalInvested
   const totalPLPct = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0
 
-  // Max drift from target
+  // Max drift from target (skip Liquidity / target_weight 0)
   const totalVal = totalValue
   let maxDrift = 0
   let maxDriftTicker = ''
   for (const t of tickers) {
+    if (t.target_weight === 0) continue
     const actualWeight = holdings[t.ticker]
       ? (holdings[t.ticker] * (prices[t.ticker] || 0)) / totalVal
       : 0

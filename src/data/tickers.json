@@ -26,5 +26,12 @@
         "name": "iShares Core MSCI Emerging Markets IMI UCITS ETF (Acc)",
         "category": "Equity",
         "target_weight": 0.07
+    },
+    {
+        "ticker": "XEON.MI",
+        "isin": "IE00BM0RFN48",
+        "name": "Xtrackers EUR Overnight Rate Swap UCITS ETF 1C",
+        "category": "Liquidity",
+        "target_weight": 0
     }
 ]

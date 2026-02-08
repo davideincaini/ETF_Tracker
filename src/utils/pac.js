@@ -3,14 +3,13 @@
  * buying whole shares only.
  *
  * @param {number} budget - monthly EUR to invest
- * @param {number} cashResiduo - leftover cash from previous month
  * @param {Object} holdings - { ticker: qty }
  * @param {Object} prices - { ticker: price }
  * @param {Array} tickers - ticker config array with target_weight
- * @returns {{ buys: Array<{ticker, name, shares, cost}>, newCashResiduo: number }}
+ * @returns {{ buys: Array<{ticker, name, shares, cost}> }}
  */
-export function calculatePac(budget, cashResiduo, holdings, prices, tickers) {
-  let available = budget + cashResiduo
+export function calculatePac(budget, holdings, prices, tickers) {
+  let available = budget
 
   // current portfolio value
   const portfolioValue = tickers.reduce(
@@ -61,7 +60,5 @@ export function calculatePac(budget, cashResiduo, holdings, prices, tickers) {
     leftover -= extra * etf.price
   }
 
-  available = leftover
-
-  return { buys, newCashResiduo: Math.round(available * 100) / 100 }
+  return { buys }
 }

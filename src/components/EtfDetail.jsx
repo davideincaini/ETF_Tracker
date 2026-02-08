@@ -29,7 +29,8 @@ export default function EtfDetail({ ticker, name, history, holdings, price, colo
 
   // Weight & drift
   const actualWeight = totalValue > 0 ? currentValue / totalValue : 0
-  const drift = targetWeight != null ? (actualWeight - targetWeight) * 100 : 0
+  const isLiquidity = targetWeight === 0
+  const drift = !isLiquidity && targetWeight != null ? (actualWeight - targetWeight) * 100 : 0
 
   // Daily change
   let dailyChange = 0
@@ -173,17 +174,19 @@ export default function EtfDetail({ ticker, name, history, holdings, price, colo
               <p className="text-[10px] font-medium" style={{ color: 'var(--text-secondary)' }}>Weight</p>
               <p className="text-sm font-bold">{(actualWeight * 100).toFixed(1)}%</p>
             </div>
-            <div className="p-3 rounded-2xl" style={{ background: Math.abs(drift) > 5 ? '#FFF3E0' : 'var(--bg)' }}>
-              <p className="text-[10px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Drift from Target
-              </p>
-              <p className="text-sm font-bold" style={{ color: Math.abs(drift) > 5 ? '#FF9500' : 'var(--text-primary)' }}>
-                {drift >= 0 ? '+' : ''}{drift.toFixed(1)}%
-              </p>
-              <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
-                Target: {((targetWeight || 0) * 100).toFixed(0)}%
-              </p>
-            </div>
+            {!isLiquidity && (
+              <div className="p-3 rounded-2xl" style={{ background: Math.abs(drift) > 5 ? '#FFF3E0' : 'var(--bg)' }}>
+                <p className="text-[10px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Drift from Target
+                </p>
+                <p className="text-sm font-bold" style={{ color: Math.abs(drift) > 5 ? '#FF9500' : 'var(--text-primary)' }}>
+                  {drift >= 0 ? '+' : ''}{drift.toFixed(1)}%
+                </p>
+                <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+                  Target: {((targetWeight || 0) * 100).toFixed(0)}%
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

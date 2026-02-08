@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { calculatePac } from '../utils/pac'
-import { ShoppingCart, Check, Wallet } from 'lucide-react'
+import { ShoppingCart, Check } from 'lucide-react'
 
 export default function PacCalculator({
   tickers,
   holdings,
   prices,
-  cashResiduo,
   onConfirm,
   loading,
 }) {
@@ -16,36 +15,19 @@ export default function PacCalculator({
   const handleCalculate = () => {
     const b = parseFloat(budget)
     if (!b || b <= 0) return
-    const r = calculatePac(b, cashResiduo, holdings, prices, tickers)
+    const r = calculatePac(b, holdings, prices, tickers)
     setResult(r)
   }
 
   const handleConfirm = () => {
     if (!result) return
-    onConfirm(result.buys, result.newCashResiduo)
+    onConfirm(result.buys)
     setResult(null)
     setBudget('')
   }
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Cash residuo card */}
-      <div
-        className="rounded-3xl p-5 flex items-center gap-4"
-        style={{ background: 'var(--card)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
-      >
-        <div
-          className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-          style={{ background: 'var(--accent-light)' }}
-        >
-          <Wallet size={20} color="#34C759" />
-        </div>
-        <div>
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Cash Residuo</p>
-          <p className="text-xl font-bold">€{cashResiduo.toFixed(2)}</p>
-        </div>
-      </div>
-
       {/* Budget input */}
       <div
         className="rounded-3xl p-5"
@@ -113,11 +95,8 @@ export default function PacCalculator({
               ))}
             </div>
           )}
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              New residuo: <strong>€{result.newCashResiduo.toFixed(2)}</strong>
-            </span>
-            {result.buys.length > 0 && (
+          {result.buys.length > 0 && (
+            <div className="flex justify-end mt-4 pt-4 border-t border-gray-100">
               <button
                 onClick={handleConfirm}
                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-sm font-bold text-white border-none cursor-pointer"
@@ -125,8 +104,8 @@ export default function PacCalculator({
               >
                 <Check size={14} /> Confirm
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -7,7 +7,7 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
   } catch { /* corrupted localStorage, use defaults */ }
-  return { holdings: {}, transactions: [], cashResiduo: 0 }
+  return { holdings: {}, transactions: [] }
 }
 
 export function usePortfolio() {
@@ -17,7 +17,7 @@ export function usePortfolio() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }, [state])
 
-  const addTransactions = useCallback((buys, newCashResiduo) => {
+  const addTransactions = useCallback((buys) => {
     setState((prev) => {
       const holdings = { ...prev.holdings }
       const newTxns = buys.map((b) => {
@@ -27,7 +27,6 @@ export function usePortfolio() {
       return {
         holdings,
         transactions: [...prev.transactions, ...newTxns],
-        cashResiduo: newCashResiduo,
       }
     })
   }, [])
@@ -51,7 +50,6 @@ export function usePortfolio() {
       return {
         holdings,
         transactions: [...prev.transactions, txn],
-        cashResiduo: prev.cashResiduo,
       }
     })
   }, [])
@@ -81,7 +79,6 @@ export function usePortfolio() {
   return {
     holdings: state.holdings,
     transactions: state.transactions,
-    cashResiduo: state.cashResiduo,
     addTransactions,
     manualTrade,
     getPortfolioValue,

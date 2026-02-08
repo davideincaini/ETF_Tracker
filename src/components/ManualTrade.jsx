@@ -3,7 +3,7 @@ import { ArrowDownCircle, ArrowUpCircle, Check } from 'lucide-react'
 
 const COLORS = ['#5856D6', '#34C759', '#FF9500', '#FF2D55']
 
-export default function ManualTrade({ tickers, holdings, prices, cashResiduo = 0, onTrade }) {
+export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
   const [selected, setSelected] = useState(null)
   const [side, setSide] = useState('buy')
   const [qty, setQty] = useState('')
@@ -25,17 +25,6 @@ export default function ManualTrade({ tickers, holdings, prices, cashResiduo = 0
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Cash Display */}
-      <div
-        className="rounded-3xl p-5 flex items-center justify-between"
-        style={{ background: 'var(--card)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
-      >
-        <div>
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>PAC Cash Residuo</p>
-          <p className="text-xl font-bold">€{cashResiduo.toFixed(2)}</p>
-        </div>
-      </div>
-
       {/* Buy / Sell toggle */}
       <div
         className="rounded-3xl p-1.5 flex"

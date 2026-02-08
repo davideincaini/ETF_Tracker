@@ -17,9 +17,21 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
   const invested = transactions.reduce((s, tx) => s + (tx.type === 'sell' ? -tx.cost : tx.cost), 0)
   const weights = getWeights(prices)
 
-  const bondPct = tickers
+  // Filter out Liquidity ETFs for allocation calculations
+  const allocTickers = tickers.filter((t) => t.category !== 'Liquidity')
+
+  // Recalculate weights excluding Liquidity for allocation display
+  const allocTotal = allocTickers.reduce((s, t) => s + (holdings[t.ticker] || 0) * (prices[t.ticker] || 0), 0)
+  const allocWeights = {}
+  if (allocTotal > 0) {
+    for (const t of allocTickers) {
+      allocWeights[t.ticker] = ((holdings[t.ticker] || 0) * (prices[t.ticker] || 0)) / allocTotal
+    }
+  }
+
+  const bondPct = allocTickers
     .filter((t) => t.category === 'Bond')
-    .reduce((s, t) => s + (weights[t.ticker] || 0), 0)
+    .reduce((s, t) => s + (allocWeights[t.ticker] || 0), 0)
   const equityPct = 1 - bondPct
 
   const selectedTicker = selectedEtf ? tickers.find((t) => t.ticker === selectedEtf) : null
@@ -58,7 +70,7 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
         totalValue={totalValue}
       />
 
-      <AllocationChart tickers={tickers} weights={weights} holdings={holdings} />
+      <AllocationChart tickers={allocTickers} weights={allocWeights} holdings={holdings} />
       <HoldingsList
         tickers={tickers}
         holdings={holdings}
