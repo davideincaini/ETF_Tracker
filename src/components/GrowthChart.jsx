@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { buildHoldingsTimeline, getEverHeldTickers } from '../utils/holdings'
 
 const RANGES = [
   { label: '1M', value: '1mo' },
@@ -8,33 +9,41 @@ const RANGES = [
   { label: '1Y', value: '1y' },
 ]
 
-const START_DATE = new Date('2026-01-01').getTime()
-
-export default function GrowthChart({ history, holdings, onRangeChange }) {
+export default function GrowthChart({ history, holdings, onRangeChange, transactions }) {
   const [activeRange, setActiveRange] = useState('6mo')
 
   // Build portfolio value over time from historical prices
-  const tickers = Object.keys(history || {})
-  if (tickers.length === 0 || Object.keys(holdings).length === 0) return null
+  const historyTickers = Object.keys(history || {})
+  if (historyTickers.length === 0 || Object.keys(holdings).length === 0) return null
+  if (!transactions || transactions.length === 0) return null
 
-  // Find common dates across all held tickers
-  const heldTickers = tickers.filter((t) => (holdings[t] || 0) > 0)
-  if (heldTickers.length === 0) return null
+  // Use all tickers that were ever held (not just currently held)
+  const everHeldTickers = getEverHeldTickers(transactions).filter((t) => history[t])
+  if (everHeldTickers.length === 0) return null
 
-  // Use the first held ticker's dates as reference, filtered from 01-01-2026
-  const refHistory = (history[heldTickers[0]] || []).filter((p) => p.date >= START_DATE)
+  // Use first transaction date as start
+  const firstTxDate = new Date(transactions[0].date).getTime()
+  const refTicker = everHeldTickers[0]
+  const refHistory = (history[refTicker] || []).filter((p) => p.date >= firstTxDate)
   if (refHistory.length < 2) return null
 
+  // Build point-in-time holdings for each chart date
+  const chartDates = refHistory.map((p) => p.date)
+  const holdingsTimeline = buildHoldingsTimeline(transactions, chartDates)
+
   const chartData = refHistory.map((point) => {
+    const holdingsAtDate = holdingsTimeline.get(point.date) || {}
     let totalValue = 0
-    for (const ticker of heldTickers) {
+    for (const ticker of everHeldTickers) {
+      const qty = holdingsAtDate[ticker] || 0
+      if (qty === 0) continue
       const tickerHist = history[ticker] || []
       // Find closest date
       const match = tickerHist.reduce((prev, curr) =>
         Math.abs(curr.date - point.date) < Math.abs(prev.date - point.date) ? curr : prev
       , tickerHist[0])
       if (match) {
-        totalValue += (holdings[ticker] || 0) * match.price
+        totalValue += qty * match.price
       }
     }
     return {

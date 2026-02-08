@@ -136,21 +136,19 @@ export default function AllocationChart({ tickers, weights, holdings }) {
           </BarChart>
         </ResponsiveContainer>
       ) : (
-        /* Pie charts: Portfolio or Equity */
-        !hasPieData ? (
-          <div className="flex flex-col items-center justify-center py-10" style={{ color: 'var(--text-secondary)' }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-2" style={{ background: '#F0F0F0' }}>
-              <div className="w-6 h-6 rounded-full border-2 border-current opacity-30" />
-            </div>
-            <p className="text-xs font-medium">No assets to display</p>
-          </div>
-        ) : (
+        /* Pie charts: Portfolio or Equity — show target allocation as fallback when no holdings */
+        <>
+          {!hasPieData && (
+            <p className="text-[10px] font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Target allocation (no holdings yet)
+            </p>
+          )}
           <div className="flex items-center gap-4">
             <div className="w-[140px] h-[140px] shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={pieData}
+                    data={displayPieData}
                     cx="50%"
                     cy="50%"
                     innerRadius={38}
@@ -159,7 +157,7 @@ export default function AllocationChart({ tickers, weights, holdings }) {
                     dataKey="value"
                     strokeWidth={0}
                   >
-                    {pieData.map((entry, i) => (
+                    {displayPieData.map((entry, i) => (
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Pie>
@@ -167,7 +165,7 @@ export default function AllocationChart({ tickers, weights, holdings }) {
               </ResponsiveContainer>
             </div>
             <div className="flex-1 flex flex-col gap-2">
-              {pieData.map((entry) => (
+              {displayPieData.map((entry) => (
                 <div key={entry.name} className="flex items-center gap-2">
                   <div
                     className="w-3 h-3 rounded-full shrink-0"
@@ -188,7 +186,7 @@ export default function AllocationChart({ tickers, weights, holdings }) {
               ))}
             </div>
           </div>
-        )
+        </>
       )}
     </div>
   )

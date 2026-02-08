@@ -17,7 +17,6 @@ export default function ManualTrade({ tickers, holdings, prices, cashResiduo = 0
 
     // Validations
     if (side === 'sell' && shares > (holdings[selected] || 0)) return
-    if (side === 'buy' && (shares * price) > cashResiduo) return
 
     onTrade(selected, t.name, shares, price, side)
     setQty('')
@@ -32,7 +31,7 @@ export default function ManualTrade({ tickers, holdings, prices, cashResiduo = 0
         style={{ background: 'var(--card)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
       >
         <div>
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Available Cash</p>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>PAC Cash Residuo</p>
           <p className="text-xl font-bold">€{cashResiduo.toFixed(2)}</p>
         </div>
       </div>
@@ -148,8 +147,7 @@ export default function ManualTrade({ tickers, holdings, prices, cashResiduo = 0
               disabled={
                 !qty ||
                 parseInt(qty) <= 0 ||
-                (side === 'sell' && parseInt(qty) > (holdings[selected] || 0)) ||
-                (side === 'buy' && (parseInt(qty) * prices[selected]) > cashResiduo)
+                (side === 'sell' && parseInt(qty) > (holdings[selected] || 0))
               }
               className="px-6 py-3 rounded-2xl text-sm font-bold text-white border-none cursor-pointer disabled:opacity-40 transition-opacity"
               style={{ background: side === 'buy' ? '#34C759' : '#FF3B30' }}
@@ -162,9 +160,6 @@ export default function ManualTrade({ tickers, holdings, prices, cashResiduo = 0
               <p>Total: <strong>€{(parseInt(qty || 0) * prices[selected]).toFixed(2)}</strong></p>
               {side === 'sell' && parseInt(qty) > (holdings[selected] || 0) && (
                 <span style={{ color: '#FF3B30' }}> — exceeds holdings</span>
-              )}
-              {side === 'buy' && (parseInt(qty) * prices[selected]) > cashResiduo && (
-                <span style={{ color: '#FF3B30' }}> — exceeds available cash</span>
               )}
             </div>
           )}

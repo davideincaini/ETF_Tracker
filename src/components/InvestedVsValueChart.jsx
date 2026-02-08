@@ -1,16 +1,21 @@
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-
-const START_DATE = new Date('2026-01-01').getTime()
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { buildHoldingsTimeline, getEverHeldTickers } from '../utils/holdings'
 
 export default function InvestedVsValueChart({ history, holdings, transactions }) {
-  const tickers = Object.keys(history || {})
-  const heldTickers = tickers.filter((t) => (holdings[t] || 0) > 0)
-  if (heldTickers.length === 0 || transactions.length === 0) return null
+  const historyTickers = Object.keys(history || {})
+  if (historyTickers.length === 0 || !transactions || transactions.length === 0) return null
 
-  const refHistory = (history[heldTickers[0]] || []).filter((p) => p.date >= START_DATE)
+  // Use all tickers that were ever held (not just currently held)
+  const everHeldTickers = getEverHeldTickers(transactions).filter((t) => history[t])
+  if (everHeldTickers.length === 0) return null
+
+  // Use first transaction date as start filter
+  const firstTxDate = new Date(transactions[0].date).getTime()
+  const refTicker = everHeldTickers[0]
+  const refHistory = (history[refTicker] || []).filter((p) => p.date >= firstTxDate)
   if (refHistory.length < 2) return null
 
-  // Helper: get day-only timestamp (midnight UTC)
+  // Helper: get day-only timestamp (midnight local)
   const toDay = (ts) => {
     const d = new Date(ts)
     return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
@@ -23,28 +28,33 @@ export default function InvestedVsValueChart({ history, holdings, transactions }
     cumInvested += tx.type === 'sell' ? -tx.cost : tx.cost
     investedByDay.push({ day: toDay(new Date(tx.date).getTime()), invested: Math.max(0, cumInvested) })
   }
-  // Final cumulative value (current total invested)
   const finalInvested = investedByDay.length > 0 ? investedByDay[investedByDay.length - 1].invested : 0
   const firstTxDay = investedByDay.length > 0 ? investedByDay[0].day : Infinity
 
-  // For each history date, find the invested amount at that point + portfolio value
+  // Build point-in-time holdings for each chart date
+  const chartDates = refHistory.map((p) => p.date)
+  const holdingsTimeline = buildHoldingsTimeline(transactions, chartDates)
+
+  // For each history date, compute invested amount + portfolio value using actual holdings at that date
   const chartData = refHistory.map((point) => {
     const pointDay = toDay(point.date)
+    const holdingsAtDate = holdingsTimeline.get(point.date) || {}
 
-    // Portfolio value at this date
+    // Portfolio value at this date using point-in-time holdings
     let value = 0
-    for (const ticker of heldTickers) {
+    for (const ticker of everHeldTickers) {
+      const qty = holdingsAtDate[ticker] || 0
+      if (qty === 0) continue
       const tickerHist = history[ticker] || []
       const match = tickerHist.reduce((prev, curr) =>
         Math.abs(curr.date - point.date) < Math.abs(prev.date - point.date) ? curr : prev
       , tickerHist[0])
-      if (match) value += (holdings[ticker] || 0) * match.price
+      if (match) value += qty * match.price
     }
 
     // Invested at this date: find last transaction on or before this day
     let invested = 0
     if (pointDay >= firstTxDay) {
-      // Default to final invested (handles same-day or after all transactions)
       invested = finalInvested
       for (let i = investedByDay.length - 1; i >= 0; i--) {
         if (investedByDay[i].day <= pointDay) {

@@ -47,7 +47,7 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
         </div>
       </div>
 
-      <GrowthChart history={history} holdings={holdings} onRangeChange={onRangeChange} />
+      <GrowthChart history={history} holdings={holdings} onRangeChange={onRangeChange} transactions={transactions} />
 
       <MetricsCard
         tickers={tickers}

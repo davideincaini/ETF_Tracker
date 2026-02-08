@@ -10,8 +10,9 @@ export async function fetchPrice(ticker) {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Failed to fetch ${ticker}`)
   const json = await res.json()
-  const meta = json.chart.result[0].meta
-  return meta.regularMarketPrice
+  const result = json.chart?.result?.[0]
+  if (!result) throw new Error(`No data for ${ticker}`)
+  return result.meta.regularMarketPrice
 }
 
 export async function fetchAllPrices(tickers) {
@@ -43,9 +44,10 @@ export async function fetchHistory(ticker, range = '6mo', interval = '1d') {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Failed to fetch history for ${ticker}`)
   const json = await res.json()
-  const result = json.chart.result[0]
+  const result = json.chart?.result?.[0]
+  if (!result) throw new Error(`No history data for ${ticker}`)
   const timestamps = result.timestamp || []
-  const closes = result.indicators.quote[0].close || []
+  const closes = result.indicators?.quote?.[0]?.close || []
 
   return timestamps.map((ts, i) => ({
     date: ts * 1000,
