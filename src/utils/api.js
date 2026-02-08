@@ -1,15 +1,27 @@
-const PROXY = 'https://corsproxy.io/?'
+const PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+]
 const CACHE_KEY = 'etf_prices_cache'
 const HISTORY_CACHE_KEY = 'etf_history_cache'
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
+async function fetchViaProxy(targetUrl) {
+  for (const proxy of PROXIES) {
+    try {
+      const url = `${proxy}${encodeURIComponent(targetUrl)}`
+      const res = await fetch(url)
+      if (!res.ok) continue
+      return await res.json()
+    } catch { /* try next proxy */ }
+  }
+  throw new Error(`All proxies failed for ${targetUrl}`)
+}
+
 export async function fetchPrice(ticker) {
-  const url = `${PROXY}${encodeURIComponent(
+  const json = await fetchViaProxy(
     `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1d`
-  )}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to fetch ${ticker}`)
-  const json = await res.json()
+  )
   const result = json.chart?.result?.[0]
   if (!result) throw new Error(`No data for ${ticker}`)
   return result.meta.regularMarketPrice
@@ -17,7 +29,7 @@ export async function fetchPrice(ticker) {
 
 export async function fetchAllPrices(tickers) {
   const cached = getCached(CACHE_KEY)
-  if (cached) return cached
+  if (cached && tickers.every((t) => t.ticker in cached)) return cached
 
   const prices = {}
   const results = await Promise.allSettled(
@@ -38,12 +50,9 @@ export async function fetchAllPrices(tickers) {
 }
 
 export async function fetchHistory(ticker, range = '6mo', interval = '1d') {
-  const url = `${PROXY}${encodeURIComponent(
+  const json = await fetchViaProxy(
     `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=${interval}`
-  )}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to fetch history for ${ticker}`)
-  const json = await res.json()
+  )
   const result = json.chart?.result?.[0]
   if (!result) throw new Error(`No history data for ${ticker}`)
   const timestamps = result.timestamp || []
@@ -58,7 +67,7 @@ export async function fetchHistory(ticker, range = '6mo', interval = '1d') {
 export async function fetchAllHistory(tickers, range = '6mo') {
   const cacheKey = `${HISTORY_CACHE_KEY}_${range}`
   const cached = getCached(cacheKey)
-  if (cached) return cached
+  if (cached && tickers.every((t) => t.ticker in cached)) return cached
 
   const history = {}
   await Promise.allSettled(
