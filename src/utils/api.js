@@ -79,7 +79,7 @@ function getCached(key) {
     if (!raw) return null
     const { ts, data } = JSON.parse(raw)
     if (Date.now() - ts < CACHE_TTL) return data
-  } catch {}
+  } catch { /* corrupted cache, ignore */ }
   return null
 }
 

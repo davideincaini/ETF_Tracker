@@ -1,6 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { X, TrendingUp, TrendingDown } from 'lucide-react'
-import { computeCostBasis } from './MetricsCard'
+import { computeCostBasis } from '../utils/costBasis'
 
 export default function EtfDetail({ ticker, name, history, holdings, price, color, onClose, transactions, targetWeight, totalValue }) {
   const qty = holdings[ticker] || 0

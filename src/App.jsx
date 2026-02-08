@@ -40,7 +40,24 @@ export default function App() {
   }
 
   useEffect(() => {
-    loadPrices()
+    let cancelled = false
+    async function init() {
+      try {
+        const [p, h] = await Promise.all([
+          fetchAllPrices(tickers),
+          fetchAllHistory(tickers, '6mo'),
+        ])
+        if (!cancelled) {
+          setPrices(p)
+          setHistory(h)
+        }
+      } catch (e) {
+        console.error('Failed to load prices', e)
+      }
+      if (!cancelled) setLoading(false)
+    }
+    init()
+    return () => { cancelled = true }
   }, [])
 
   return (

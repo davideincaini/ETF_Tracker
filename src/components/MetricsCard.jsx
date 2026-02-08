@@ -1,28 +1,5 @@
-import { DollarSign, TrendingUp, TrendingDown, Target, BarChart3, Calendar, Percent, Scale } from 'lucide-react'
-
-/**
- * Compute per-ETF cost basis from transactions.
- * Uses average cost method: total cost of buys / total shares bought,
- * adjusted for sells (reduces qty but not avg cost).
- */
-function computeCostBasis(transactions) {
-  const basis = {} // { ticker: { totalCost, totalShares } }
-  for (const tx of transactions) {
-    if (!basis[tx.ticker]) basis[tx.ticker] = { totalCost: 0, totalShares: 0 }
-    if (tx.type === 'sell') {
-      // reduce shares at avg cost
-      const avg = basis[tx.ticker].totalShares > 0
-        ? basis[tx.ticker].totalCost / basis[tx.ticker].totalShares
-        : 0
-      basis[tx.ticker].totalShares -= tx.shares
-      basis[tx.ticker].totalCost -= avg * tx.shares
-    } else {
-      basis[tx.ticker].totalCost += tx.cost
-      basis[tx.ticker].totalShares += tx.shares
-    }
-  }
-  return basis
-}
+import { DollarSign, TrendingUp, TrendingDown, Target, BarChart3, Calendar, Scale } from 'lucide-react'
+import { computeCostBasis } from '../utils/costBasis'
 
 export default function MetricsCard({ tickers, holdings, prices, transactions, history, totalValue }) {
   if (totalValue === 0) return null
@@ -172,5 +149,3 @@ export default function MetricsCard({ tickers, holdings, prices, transactions, h
     </div>
   )
 }
-
-export { computeCostBasis }

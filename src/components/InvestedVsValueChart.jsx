@@ -1,7 +1,7 @@
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { buildHoldingsTimeline, getEverHeldTickers } from '../utils/holdings'
 
-export default function InvestedVsValueChart({ history, holdings, transactions }) {
+export default function InvestedVsValueChart({ history, transactions }) {
   const historyTickers = Object.keys(history || {})
   if (historyTickers.length === 0 || !transactions || transactions.length === 0) return null
 

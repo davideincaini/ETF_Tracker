@@ -6,7 +6,7 @@ function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
-  } catch {}
+  } catch { /* corrupted localStorage, use defaults */ }
   return { holdings: {}, transactions: [], cashResiduo: 0 }
 }
 

@@ -70,7 +70,6 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
 
       <InvestedVsValueChart
         history={history}
-        holdings={holdings}
         transactions={transactions}
       />
 
