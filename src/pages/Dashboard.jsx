@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import PortfolioCard from '../components/PortfolioCard'
+import PerformanceOverview from '../components/PerformanceOverview'
 import AllocationChart from '../components/AllocationChart'
 import GrowthChart from '../components/GrowthChart'
 import HoldingsList from '../components/HoldingsList'
@@ -10,7 +11,7 @@ import { Shield, TrendingUp } from 'lucide-react'
 
 const COLORS = ['#5856D6', '#34C759', '#FF9500', '#FF2D55', '#007AFF', '#AF52DE']
 
-export default function Dashboard({ tickers, holdings, transactions, prices, loading, getPortfolioValue, getWeights, history, onRangeChange }) {
+export default function Dashboard({ tickers, holdings, transactions, prices, loading, getPortfolioValue, getWeights, history, onRangeChange, priceMetadata = {} }) {
   const [selectedEtf, setSelectedEtf] = useState(null)
 
   const totalValue = getPortfolioValue(prices)
@@ -39,7 +40,9 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
 
   return (
     <div className="flex-1 overflow-y-auto px-5 pt-1 pb-4">
-      <PortfolioCard totalValue={totalValue} invested={invested} loading={loading} />
+      <PortfolioCard totalValue={totalValue} invested={invested} loading={loading} priceMetadata={priceMetadata} prices={prices} />
+
+      <PerformanceOverview totalValue={totalValue} invested={invested} />
 
       {/* Category badges */}
       <div className="flex gap-2 mb-5">
@@ -78,6 +81,7 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
         weights={weights}
         history={history}
         onSelect={setSelectedEtf}
+        priceMetadata={priceMetadata}
       />
 
       <InvestedVsValueChart

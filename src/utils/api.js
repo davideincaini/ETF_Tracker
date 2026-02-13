@@ -1,27 +1,40 @@
 const PROXIES = [
   'https://corsproxy.io/?',
   'https://api.allorigins.win/raw?url=',
+  'https://api.codetabs.com/v1/proxy?quest=',
+  'https://thingproxy.freeboard.io/fetch/',
   'https://cors-anywhere.herokuapp.com/', // Added as fallback, might need manual opt-in sometimes but worth trying
 ]
 const CACHE_KEY = 'etf_prices_cache'
 const HISTORY_CACHE_KEY = 'etf_history_cache'
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
-async function fetchViaProxy(targetUrl) {
-  for (const proxy of PROXIES) {
-    try {
-      const url = `${proxy}${encodeURIComponent(targetUrl)}`
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5s timeout per proxy
+async function fetchViaProxy(targetUrl, retries = 2) {
+  let lastError = null
 
-      const res = await fetch(url, { signal: controller.signal })
-      clearTimeout(timeoutId)
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    for (const proxy of PROXIES) {
+      try {
+        const url = `${proxy}${encodeURIComponent(targetUrl)}`
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 15000) // 15s timeout per proxy
 
-      if (!res.ok) continue
-      return await res.json()
-    } catch { /* try next proxy */ }
+        const res = await fetch(url, { signal: controller.signal })
+        clearTimeout(timeoutId)
+
+        if (!res.ok) continue
+        return await res.json()
+      } catch (err) {
+        lastError = err
+        /* try next proxy */
+      }
+    }
+    // Wait 1s before retry (only if not the last attempt)
+    if (attempt < retries) {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
   }
-  throw new Error(`All proxies failed for ${targetUrl}`)
+  throw lastError || new Error(`All proxies failed for ${targetUrl}`)
 }
 
 export async function fetchPrice(ticker) {
@@ -34,34 +47,40 @@ export async function fetchPrice(ticker) {
 }
 
 export async function fetchAllPrices(tickers) {
-  // Always try to load cache first to have fallbacks
-  const cached = getCached(CACHE_KEY) || {}
+  // Load last known prices from cache (even if stale) as fallback
+  const lastKnown = getLastKnown(CACHE_KEY) || {}
+  const prices = { ...lastKnown }
+  const metadata = {}
 
-  // If we have a valid full cache, return it (optimization)
-  // But usually we want to try refreshing if it's stale or if forced.
-  // The caller (App.jsx) handles the logic of "when" to call this.
-  // Here we just fetch.
-
-  const prices = { ...cached } // Start with cached prices as fallback
-
-  const results = await Promise.allSettled(
+  // Try to fetch fresh prices for all tickers
+  await Promise.allSettled(
     tickers.map(async (t) => {
       try {
         const price = await fetchPrice(t.ticker)
-        prices[t.ticker] = price // Update with new price
+        if (price && price > 0) {
+          prices[t.ticker] = price
+          metadata[t.ticker] = { timestamp: Date.now(), stale: false }
+        }
       } catch (e) {
-        console.warn(`Price fetch failed for ${t.ticker}, using cached value if available:`, e)
-        // If we have a cached price, we keep it. If not, it remains undefined (or 0 if handled downstream)
+        console.warn(`Price fetch failed for ${t.ticker}, using cached value if available:`, e.message)
+        // If we have a cached price, mark it as stale
+        if (prices[t.ticker]) {
+          metadata[t.ticker] = { timestamp: 0, stale: true }
+        }
       }
     })
   )
 
-  // Save updated cache
+  // Save updated cache with metadata
   if (Object.keys(prices).length > 0) {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: prices }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ts: Date.now(),
+      data: prices,
+      metadata: metadata
+    }))
   }
 
-  return prices
+  return { prices, metadata }
 }
 
 export async function fetchHistory(ticker, range = '6mo', interval = '1d') {
@@ -82,16 +101,22 @@ export async function fetchHistory(ticker, range = '6mo', interval = '1d') {
 export async function fetchAllHistory(tickers, range = '6mo') {
   const cacheKey = `${HISTORY_CACHE_KEY}_${range}`
   const cached = getCached(cacheKey)
-  if (cached && tickers.every((t) => t.ticker in cached)) return cached
 
-  const history = cached || {}
+  // If we have fresh cache with all tickers, return it
+  if (cached && cached.data && tickers.every((t) => t.ticker in cached.data)) {
+    return cached.data
+  }
+
+  // Otherwise, start with last known and try to update
+  const history = getLastKnown(cacheKey) || {}
 
   await Promise.allSettled(
     tickers.map(async (t) => {
       try {
         history[t.ticker] = await fetchHistory(t.ticker, range)
       } catch (e) {
-        console.warn(`History fetch failed for ${t.ticker}:`, e)
+        console.warn(`History fetch failed for ${t.ticker}:`, e.message)
+        // Keep cached history if available
       }
     })
   )
@@ -106,18 +131,11 @@ function getCached(key) {
   try {
     const raw = localStorage.getItem(key)
     if (!raw) return null
-    const { ts, data } = JSON.parse(raw)
-    // Return data even if stale, let the caller decide or use it as fallback
-    // But logically, getCached is often used to *skip* fetching.
-    // For our robust fetchAllPrices, we just read raw localStorage manually or change this.
-    // Let's make getCached return data regardless of TTL, 
-    // BUT we need to know if it's stale for the "skip fetch" logic in other places.
-    // Actually, fetchAllPrices ignores TTL now and always tries to update, using cache as fallback.
-    // So getCached being strict or loose depends on usage. 
-    // To match original behavior (skip if fresh), we should return null if stale.
-    // But for fallback, we need the stale data. 
-    // Let's split this: getCached (strict) and getLastKnown (loose).
-    if (Date.now() - ts < CACHE_TTL) return data
+    const { ts, data, metadata } = JSON.parse(raw)
+    // Return data only if fresh (within TTL)
+    if (Date.now() - ts < CACHE_TTL) {
+      return { data, metadata: metadata || {} }
+    }
   } catch { /* corrupted cache, ignore */ }
   return null
 }
@@ -127,13 +145,10 @@ function getLastKnown(key) {
   try {
     const raw = localStorage.getItem(key)
     if (!raw) return null
-    const { data } = JSON.parse(raw)
-    return data
+    const parsed = JSON.parse(raw)
+    return parsed.data || null
   } catch { return null }
 }
-
-// We need to update fetchAllPrices to use getLastKnown logic inline or via helper
-// I'll rewrite fetchAllPrices above to manually read it.
 
 // Fetch maximum available history for Monte Carlo simulations
 export async function fetchMaxHistory(ticker, interval = '1d') {
@@ -154,9 +169,14 @@ export async function fetchMaxHistory(ticker, interval = '1d') {
 export async function fetchAllMaxHistory(tickers) {
   const cacheKey = `${HISTORY_CACHE_KEY}_max`
   const cached = getCached(cacheKey)
-  if (cached && tickers.every((t) => t.ticker in cached)) return cached
 
-  const history = cached || {}
+  // If we have fresh cache with all tickers, return it
+  if (cached && cached.data && tickers.every((t) => t.ticker in cached.data)) {
+    return cached.data
+  }
+
+  // Otherwise, start with last known and try to update
+  const history = getLastKnown(cacheKey) || {}
 
   await Promise.allSettled(
     tickers.map(async (t) => {
@@ -164,7 +184,8 @@ export async function fetchAllMaxHistory(tickers) {
         history[t.ticker] = await fetchMaxHistory(t.ticker)
         console.log(`Loaded ${history[t.ticker].length} data points for ${t.ticker}`)
       } catch (e) {
-        console.warn(`Max history fetch failed for ${t.ticker}:`, e)
+        console.warn(`Max history fetch failed for ${t.ticker}:`, e.message)
+        // Keep cached history if available
       }
     })
   )

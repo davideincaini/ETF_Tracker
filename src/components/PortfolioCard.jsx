@@ -1,9 +1,13 @@
 import { TrendingUp, TrendingDown, Eye } from 'lucide-react'
 
-export default function PortfolioCard({ totalValue, invested, loading }) {
+export default function PortfolioCard({ totalValue, invested, loading, priceMetadata = {}, prices = {} }) {
   const pl = totalValue - invested
   const plPct = invested > 0 ? (pl / invested) * 100 : 0
   const isUp = pl >= 0
+
+  // Check if any prices are stale or unavailable
+  const stalePrices = Object.values(priceMetadata).filter(m => m?.stale).length
+  const unavailablePrices = Object.entries(prices).filter(([_, p]) => !p || p === 0).length
 
   return (
     <div
@@ -24,7 +28,7 @@ export default function PortfolioCard({ totalValue, invested, loading }) {
         </p>
       )}
       {!loading && invested > 0 ? (
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
           <span
             className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
             style={{
@@ -38,6 +42,11 @@ export default function PortfolioCard({ totalValue, invested, loading }) {
           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
             {isUp ? '+' : ''}€{pl.toFixed(2)}
           </span>
+          {(stalePrices > 0 || unavailablePrices > 0) && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: '#FFF3CD', color: '#856404' }}>
+              {unavailablePrices > 0 ? `${unavailablePrices} price${unavailablePrices > 1 ? 's' : ''} unavailable` : `${stalePrices} cached`}
+            </span>
+          )}
         </div>
       ) : !loading ? (
         <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>

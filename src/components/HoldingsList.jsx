@@ -2,7 +2,7 @@ import Sparkline from './Sparkline'
 
 const COLORS = ['#5856D6', '#34C759', '#FF9500', '#FF2D55', '#007AFF', '#AF52DE']
 
-export default function HoldingsList({ tickers, holdings, prices, weights, history, onSelect }) {
+export default function HoldingsList({ tickers, holdings, prices, weights, history, onSelect, priceMetadata = {} }) {
   const hasHoldings = Object.values(holdings).some((q) => q > 0)
 
   return (
@@ -42,6 +42,8 @@ export default function HoldingsList({ tickers, holdings, prices, weights, histo
             const weight = weights[t.ticker] || 0
             const color = COLORS[i % COLORS.length]
             const sparkData = history ? history[t.ticker] : null
+            const isStale = priceMetadata[t.ticker]?.stale || false
+            const isPriceUnavailable = !price || price === 0
 
             return (
               <button
@@ -65,7 +67,15 @@ export default function HoldingsList({ tickers, holdings, prices, weights, histo
                   <Sparkline data={sparkData.slice(-30)} width={50} height={24} />
                 )}
                 <div className="text-right min-w-[70px]">
-                  <p className="text-sm font-bold">€{value.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <div className="flex items-center justify-end gap-1">
+                    <p className="text-sm font-bold">€{value.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    {isPriceUnavailable && (
+                      <span title="Price unavailable" className="text-xs">⚠️</span>
+                    )}
+                    {!isPriceUnavailable && isStale && (
+                      <span title="Using cached price" className="text-xs opacity-60">🕐</span>
+                    )}
+                  </div>
                   <span
                     className="text-[10px] font-semibold"
                     style={{ color: 'var(--text-secondary)' }}

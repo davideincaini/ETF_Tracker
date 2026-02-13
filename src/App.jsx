@@ -11,6 +11,7 @@ import { RefreshCw, Bell } from 'lucide-react'
 export default function App() {
   const [tab, setTab] = useState('dashboard')
   const [prices, setPrices] = useState({})
+  const [priceMetadata, setPriceMetadata] = useState({})
   const [history, setHistory] = useState({})
   const [loading, setLoading] = useState(true)
   const portfolio = usePortfolio()
@@ -19,11 +20,12 @@ export default function App() {
     setLoading(true)
     if (force) clearPriceCache()
     try {
-      const [p, h] = await Promise.all([
+      const [priceData, h] = await Promise.all([
         fetchAllPrices(tickers),
         fetchAllHistory(tickers, '6mo'),
       ])
-      setPrices(p)
+      setPrices(priceData.prices)
+      setPriceMetadata(priceData.metadata)
       setHistory(h)
     } catch (e) {
       console.error('Failed to load prices', e)
@@ -44,12 +46,13 @@ export default function App() {
     let cancelled = false
     async function init() {
       try {
-        const [p, h] = await Promise.all([
+        const [priceData, h] = await Promise.all([
           fetchAllPrices(tickers),
           fetchAllHistory(tickers, '6mo'),
         ])
         if (!cancelled) {
-          setPrices(p)
+          setPrices(priceData.prices)
+          setPriceMetadata(priceData.metadata)
           setHistory(h)
         }
       } catch (e) {
@@ -107,6 +110,7 @@ export default function App() {
           getWeights={portfolio.getWeights}
           history={history}
           onRangeChange={handleRangeChange}
+          priceMetadata={priceMetadata}
         />
       )}
       {tab === 'pac' && (
