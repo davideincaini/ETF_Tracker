@@ -10,7 +10,7 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
   const [manualPrice, setManualPrice] = useState('')
 
   const handleConfirm = () => {
-    const shares = parseInt(qty)
+    const shares = parseFloat(qty)
     if (!selected || !shares || shares <= 0) return
     const t = tickers.find((tk) => tk.ticker === selected)
     const price = parseFloat(manualPrice) || prices[selected] || 0
@@ -138,7 +138,8 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>#</span>
               <input
                 type="number"
-                inputMode="numeric"
+                inputMode="decimal"
+                step="any"
                 placeholder="Shares"
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
@@ -153,9 +154,9 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
               onClick={handleConfirm}
               disabled={
                 !qty ||
-                parseInt(qty) <= 0 ||
+                parseFloat(qty) <= 0 ||
                 ((parseFloat(manualPrice) || prices[selected] || 0) === 0) ||
-                (side === 'sell' && parseInt(qty) > (holdings[selected] || 0))
+                (side === 'sell' && parseFloat(qty) > (holdings[selected] || 0))
               }
               className="px-6 py-3 rounded-2xl text-sm font-bold text-white border-none cursor-pointer disabled:opacity-40 transition-opacity"
               style={{ background: side === 'buy' ? '#34C759' : '#FF3B30' }}
@@ -165,8 +166,8 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
           </div>
           {qty && (parseFloat(manualPrice) || prices[selected]) > 0 && (
             <div className="text-xs mt-3 flex flex-col gap-1" style={{ color: 'var(--text-secondary)' }}>
-              <p>Total: <strong>€{(parseInt(qty || 0) * (parseFloat(manualPrice) || prices[selected])).toFixed(2)}</strong></p>
-              {side === 'sell' && parseInt(qty) > (holdings[selected] || 0) && (
+              <p>Total: <strong>€{(parseFloat(qty || 0) * (parseFloat(manualPrice) || prices[selected])).toFixed(2)}</strong></p>
+              {side === 'sell' && parseFloat(qty) > (holdings[selected] || 0) && (
                 <span style={{ color: '#FF3B30' }}> — exceeds holdings</span>
               )}
             </div>
