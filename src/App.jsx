@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import BottomNav from './components/BottomNav'
 import Dashboard from './pages/Dashboard'
 import PacPage from './pages/PacPage'
@@ -17,13 +17,20 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const portfolio = usePortfolio()
 
+  const augmentedTickers = useMemo(() => {
+    return tickers.map(t => ({
+      ...t,
+      sell_threshold: portfolio.customThresholds[t.ticker] ?? t.sell_threshold
+    }))
+  }, [portfolio.customThresholds])
+
   const loadPrices = async (force = false) => {
     setLoading(true)
     if (force) clearPriceCache()
     try {
       const [priceData, h] = await Promise.all([
-        fetchAllPrices(tickers),
-        fetchAllHistory(tickers, '6mo'),
+        fetchAllPrices(augmentedTickers),
+        fetchAllHistory(augmentedTickers, '6mo'),
       ])
       setPrices(priceData.prices)
       setPriceMetadata(priceData.metadata)
@@ -36,7 +43,7 @@ export default function App() {
 
   const handleRangeChange = async (range) => {
     try {
-      const h = await fetchAllHistory(tickers, range)
+      const h = await fetchAllHistory(augmentedTickers, range)
       setHistory(h)
     } catch (e) {
       console.error('Failed to load history', e)
@@ -48,8 +55,8 @@ export default function App() {
     async function init() {
       try {
         const [priceData, h] = await Promise.all([
-          fetchAllPrices(tickers),
-          fetchAllHistory(tickers, '6mo'),
+          fetchAllPrices(augmentedTickers),
+          fetchAllHistory(augmentedTickers, '6mo'),
         ])
         if (!cancelled) {
           setPrices(priceData.prices)
@@ -143,7 +150,7 @@ export default function App() {
       {/* Pages */}
       {tab === 'dashboard' && (
         <Dashboard
-          tickers={tickers}
+          tickers={augmentedTickers}
           holdings={portfolio.holdings}
           transactions={portfolio.transactions}
           prices={prices}
@@ -157,7 +164,7 @@ export default function App() {
       )}
       {tab === 'pac' && (
         <PacPage
-          tickers={tickers}
+          tickers={augmentedTickers}
           holdings={portfolio.holdings}
           prices={prices}
           onConfirm={portfolio.addTransactions}
@@ -167,16 +174,17 @@ export default function App() {
       )}
       {tab === 'rebalance' && (
         <RebalancePage
-          tickers={tickers}
+          tickers={augmentedTickers}
           holdings={portfolio.holdings}
           prices={prices}
           getPortfolioValue={portfolio.getPortfolioValue}
           getWeights={portfolio.getWeights}
+          updateThreshold={portfolio.updateThreshold}
         />
       )}
       {tab === 'simulator' && (
         <MonteCarloPage
-          tickers={tickers}
+          tickers={augmentedTickers}
           holdings={portfolio.holdings}
           prices={prices}
           getPortfolioValue={portfolio.getPortfolioValue}
@@ -223,7 +231,7 @@ export default function App() {
             <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--text-secondary)' }}>
               ETF Configurations
             </p>
-            {tickers.map((t) => (
+            {augmentedTickers.map((t) => (
               <div key={t.ticker} className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-b-0">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"

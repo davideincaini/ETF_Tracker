@@ -5,9 +5,16 @@ const STORAGE_KEY = 'antigravity_portfolio'
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        holdings: parsed.holdings || {},
+        transactions: parsed.transactions || [],
+        customThresholds: parsed.customThresholds || {}
+      }
+    }
   } catch { /* corrupted localStorage, use defaults */ }
-  return { holdings: {}, transactions: [] }
+  return { holdings: {}, transactions: [], customThresholds: {} }
 }
 
 export function usePortfolio() {
@@ -48,8 +55,20 @@ export function usePortfolio() {
       const txn = { ticker, name, shares, cost, type, date: new Date().toISOString() }
 
       return {
+        ...prev,
         holdings,
         transactions: [...prev.transactions, txn],
+      }
+    })
+  }, [])
+
+  const updateThreshold = useCallback((ticker, newThreshold) => {
+    setState((prev) => {
+      const customThresholds = { ...prev.customThresholds }
+      customThresholds[ticker] = newThreshold
+      return {
+        ...prev,
+        customThresholds
       }
     })
   }, [])
@@ -103,8 +122,10 @@ export function usePortfolio() {
   return {
     holdings: state.holdings,
     transactions: state.transactions,
+    customThresholds: state.customThresholds,
     addTransactions,
     manualTrade,
+    updateThreshold,
     getPortfolioValue,
     getWeights,
     getVaultHoldings,

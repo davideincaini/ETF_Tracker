@@ -1,6 +1,28 @@
-import { AlertTriangle, CheckCircle } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, CheckCircle, Settings2 } from 'lucide-react'
 
-export default function RebalancePage({ tickers, holdings, prices, getPortfolioValue, getWeights }) {
+function ThresholdInput({ ticker, initialThreshold, onSave }) {
+    const [val, setVal] = useState(String(Math.round(initialThreshold * 1000) / 10))
+
+    const handleBlur = () => {
+        const num = parseFloat(val)
+        if (!isNaN(num)) onSave(ticker, num / 100)
+    }
+
+    return (
+        <input
+            type="number"
+            step="0.1"
+            className="w-20 px-2 py-1.5 text-sm font-bold border border-gray-200 rounded-lg text-right focus:outline-none focus:border-[#007AFF] bg-[var(--bg)]"
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+        />
+    )
+}
+
+export default function RebalancePage({ tickers, holdings, prices, getPortfolioValue, getWeights, updateThreshold }) {
     // Solo Vault B per il ribilanciamento
     const vaultBTickers = tickers.filter(t => t.vault === 'B')
     const vaultBTotal = getPortfolioValue(prices, 'B', tickers)
@@ -106,6 +128,45 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
                     ))}
                 </div>
             )}
+
+            <div className="mt-8 mb-6">
+                <div className="flex items-center gap-2 mb-3 px-1">
+                    <Settings2 size={18} style={{ color: 'var(--text-secondary)' }} />
+                    <h2 className="text-md font-bold text-gray-800">Soglie Asimmetriche</h2>
+                </div>
+                <p className="text-xs mb-4 px-1 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    Personalizza la sensibilità della Tagliola. Valori elevati (es. Azionario) riducono l'overtrading; valori stretti (es. Bond/Monetario) scattano prima per fornire liquidità.
+                </p>
+                <div className="flex flex-col gap-2">
+                    {vaultBTickers.map((t) => {
+                        const currentWeight = vaultBWeights[t.ticker] || 0
+                        const threshold = t.sell_threshold || (t.target_weight + 0.1)
+
+                        return (
+                            <div key={t.ticker} className="flex justify-between items-center p-3.5 rounded-2xl bg-white" style={{ border: '1px solid #E5E5EA', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <span className="font-bold text-sm text-gray-800">{t.ticker.split('.')[0]}</span>
+                                        <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded text-white" style={{ background: t.category === 'Bond' ? '#5856D6' : t.category === 'Liquidity' ? '#007AFF' : '#34C759' }}>{t.category.substring(0, 3)}</span>
+                                    </div>
+                                    <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                                        Target: {(t.target_weight * 100).toFixed(0)}% | Attuale: <span style={{ color: currentWeight > threshold ? '#FF3B30' : 'inherit' }}>{(currentWeight * 100).toFixed(1)}%</span>
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1.5 relative">
+                                    <span className="absolute -left-3 text-xs font-bold text-gray-400">&gt;</span>
+                                    <ThresholdInput
+                                        ticker={t.ticker}
+                                        initialThreshold={threshold}
+                                        onSave={updateThreshold}
+                                    />
+                                    <span className="text-sm font-bold text-gray-500">%</span>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
         </div>
     )
 }
