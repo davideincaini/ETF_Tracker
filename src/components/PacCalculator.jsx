@@ -73,33 +73,39 @@ export default function PacCalculator({
               Nessun acquisto suggerito. Forse il budget è troppo basso o non ci sono deviazioni.
             </p>
           ) : (
-            <div className="flex flex-col gap-4">
-              <div
-                className="flex items-center gap-4 p-4 rounded-2xl"
-                style={{ background: '#e8f9ed', border: '1px solid #34C759' }}
-              >
+            <div className="flex flex-col gap-3">
+              {result.buys.map((buy) => (
                 <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                  style={{ background: '#34C759' }}
+                  key={buy.ticker}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-white"
+                  style={{ border: '1px solid #E5E5EA', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
                 >
-                  {result.buys[0].ticker.replace('.MI', '').slice(0, 3)}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    style={{ background: '#34C759' }}
+                  >
+                    {buy.name.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-900">{buy.ticker.split('.')[0]}</p>
+                    <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      {buy.shares} quote = €{buy.cost.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-green-50 text-green-700">
+                      Buy
+                    </span>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-lg font-bold" style={{ color: '#1B7A33' }}>{result.buys[0].ticker.replace('.MI', '')}</p>
-                  <p className="text-xs font-semibold" style={{ color: '#1B7A33' }}>
-                    {result.buys[0].shares} quote = €{result.buys[0].cost.toFixed(2)}
-                  </p>
-                </div>
-              </div>
+              ))}
 
-              <div className="p-3 rounded-2xl" style={{ background: 'var(--bg)' }}>
+              <div className="p-3 mt-2 rounded-2xl" style={{ background: 'var(--bg)' }}>
                 <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Perché questo ETF?
+                  Strategia Applicata
                 </p>
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  L'algoritmo acquista l'asset più in ritardo rispetto al target.
-                  Questo mese è <strong>{result.buys[0].ticker.replace('.MI', '')}</strong> con una deviazione
-                  di <strong>+{(result.buys[0].deviation * 100).toFixed(1)}%</strong> dal suo target teorico.
+                  L'algoritmo ha distribuito il budget proporzionalmente per colmare il deficit degli ETF in maggior ritardo rispetto al target, ripristinando il bilanciamento del portafoglio senza creare inefficienze.
                 </p>
               </div>
             </div>
