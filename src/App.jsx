@@ -7,7 +7,7 @@ import MonteCarloPage from './pages/MonteCarloPage'
 import { usePortfolio } from './hooks/usePortfolio'
 import { fetchAllPrices, fetchAllHistory, clearPriceCache } from './utils/api'
 import tickers from './data/tickers.json'
-import { RefreshCw, Bell } from 'lucide-react'
+import { RefreshCw, Bell, Trash2 } from 'lucide-react'
 
 export default function App() {
   const [tab, setTab] = useState('dashboard')
@@ -15,6 +15,7 @@ export default function App() {
   const [priceMetadata, setPriceMetadata] = useState({})
   const [history, setHistory] = useState({})
   const [loading, setLoading] = useState(true)
+  const [resetPhase, setResetPhase] = useState(0)
   const portfolio = usePortfolio()
 
   const augmentedTickers = useMemo(() => {
@@ -47,6 +48,16 @@ export default function App() {
       setHistory(h)
     } catch (e) {
       console.error('Failed to load history', e)
+    }
+  }
+
+  const handleResetClick = () => {
+    if (resetPhase === 0) setResetPhase(1)
+    else if (resetPhase === 1) setResetPhase(2)
+    else if (resetPhase === 2) {
+      portfolio.erasePortfolio()
+      setResetPhase(0)
+      setTab('dashboard')
     }
   }
 
@@ -250,6 +261,45 @@ export default function App() {
                 </span>
               </div>
             ))}
+          </div>
+
+          {/* DANGER ZONE */}
+          <div className="mt-8 mb-6">
+            <p className="text-xs font-bold uppercase tracking-wide mb-2 px-1" style={{ color: '#FF3B30' }}>
+              Danger Zone
+            </p>
+            <div className="rounded-2xl p-4" style={{ background: '#fff0f0', border: '1px solid #FF3B30' }}>
+              <div className="flex items-center gap-3 mb-3">
+                <Trash2 size={20} color="#FF3B30" />
+                <h3 className="text-sm font-bold text-[#D70015]">Azzeramento Portafoglio</h3>
+              </div>
+              <p className="text-xs font-medium mb-4" style={{ color: '#FF3B30' }}>
+                Questa operazione eliminerà permanentemente tutte le transazioni, le quantità e le soglie dal dispositivo. L'operazione non può essere annullata senza un backup.
+              </p>
+
+              <button
+                onClick={handleResetClick}
+                className="w-full py-3 rounded-xl border-none text-sm font-bold text-white cursor-pointer active:scale-95 transition-all"
+                style={{
+                  background: resetPhase === 0 ? '#FF3B30' : resetPhase === 1 ? '#D70015' : '#000000',
+                  boxShadow: '0 2px 8px rgba(255,59,48,0.3)'
+                }}
+              >
+                {resetPhase === 0 && 'Azzera Dati Portafoglio'}
+                {resetPhase === 1 && 'Sei sicuro? Clicca di nuovo per confermare.'}
+                {resetPhase === 2 && 'CONFERMA ELIMINAZIONE DEFINITIVA'}
+              </button>
+
+              {resetPhase > 0 && (
+                <button
+                  onClick={() => setResetPhase(0)}
+                  className="w-full mt-2 py-2 text-xs font-bold bg-transparent border-none cursor-pointer"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Annulla operazione
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

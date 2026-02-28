@@ -74,6 +74,14 @@ export function usePortfolio() {
     })
   }, [])
 
+  const erasePortfolio = useCallback(() => {
+    setState({
+      holdings: {},
+      transactions: [],
+      customThresholds: {}
+    })
+  }, [])
+
   // Get Vault definitions from tickers configuration
   const getVaultHoldings = useCallback((vaultId, allTickers) => {
     if (!vaultId) return state.holdings
@@ -127,6 +135,7 @@ export function usePortfolio() {
     addTransactions,
     manualTrade,
     updateThreshold,
+    erasePortfolio,
     getPortfolioValue,
     getWeights,
     getVaultHoldings,
