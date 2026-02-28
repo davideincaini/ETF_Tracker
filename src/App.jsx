@@ -3,6 +3,7 @@ import BottomNav from './components/BottomNav'
 import Dashboard from './pages/Dashboard'
 import PacPage from './pages/PacPage'
 import RebalancePage from './pages/RebalancePage'
+import PerformancePage from './pages/PerformancePage'
 import MonteCarloPage from './pages/MonteCarloPage'
 import { usePortfolio } from './hooks/usePortfolio'
 import { fetchAllPrices, fetchAllHistory, clearPriceCache } from './utils/api'
@@ -200,6 +201,13 @@ export default function App() {
           prices={prices}
           getPortfolioValue={portfolio.getPortfolioValue}
           getWeights={portfolio.getWeights}
+        />
+      )}
+      {tab === 'performance' && (
+        <PerformancePage
+          tickers={augmentedTickers}
+          transactions={portfolio.transactions}
+          prices={prices}
         />
       )}
       {tab === 'settings' && (

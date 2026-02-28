@@ -75,11 +75,11 @@ export function usePortfolio() {
   }, [])
 
   const erasePortfolio = useCallback(() => {
-    setState({
+    setState((prev) => ({
       holdings: {},
       transactions: [],
-      customThresholds: {}
-    })
+      customThresholds: { ...prev.customThresholds }
+    }))
   }, [])
 
   // Get Vault definitions from tickers configuration

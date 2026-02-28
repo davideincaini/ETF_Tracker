@@ -1,9 +1,10 @@
-import { LayoutDashboard, Calculator, Settings, TrendingUp, ShieldAlert } from 'lucide-react'
+import { LayoutDashboard, Calculator, Settings, TrendingUp, ShieldAlert, BarChart3 } from 'lucide-react'
 
 const tabs = [
   { id: 'dashboard', label: 'Portfolio', icon: LayoutDashboard },
   { id: 'pac', label: 'PAC', icon: Calculator },
   { id: 'rebalance', label: 'Check-up', icon: ShieldAlert },
+  { id: 'performance', label: 'Performance', icon: BarChart3 },
   { id: 'simulator', label: 'Simulator', icon: TrendingUp },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
