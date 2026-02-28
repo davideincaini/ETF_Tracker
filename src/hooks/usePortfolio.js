@@ -32,6 +32,7 @@ export function usePortfolio() {
         return { ...b, type: 'buy', date: new Date().toISOString() }
       })
       return {
+        ...prev,
         holdings,
         transactions: [...prev.transactions, ...newTxns],
       }
@@ -120,9 +121,9 @@ export function usePortfolio() {
   )
 
   return {
-    holdings: state.holdings,
-    transactions: state.transactions,
-    customThresholds: state.customThresholds,
+    holdings: state.holdings || {},
+    transactions: state.transactions || [],
+    customThresholds: state.customThresholds || {},
     addTransactions,
     manualTrade,
     updateThreshold,
