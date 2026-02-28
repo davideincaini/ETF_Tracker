@@ -8,57 +8,52 @@
  * @param {Array} tickers - ticker config array with target_weight
  * @returns {{ buys: Array<{ticker, name, shares, cost}> }}
  */
-export function calculatePac(budget, holdings, prices, tickers) {
+export function calculatePac(budget, holdings, prices, ObjectTickers) {
   let available = budget
 
-  // current portfolio value
+  // Solo i ticker del Vault B sono calcolabili
+  const tickers = ObjectTickers.filter(t => t.vault === 'B')
+
+  // current portfolio value (Solo Vault B)
   const portfolioValue = tickers.reduce(
     (sum, t) => sum + (holdings[t.ticker] || 0) * (prices[t.ticker] || 0),
     0
   )
   const totalAfter = portfolioValue + available
 
-  // compute gap = target value - current value for underweight ETFs
-  const gaps = tickers
-    .map((t) => {
-      const currentVal = (holdings[t.ticker] || 0) * (prices[t.ticker] || 0)
-      const targetVal = t.target_weight * totalAfter
-      return { ...t, gap: targetVal - currentVal, price: prices[t.ticker] || 0 }
-    })
-    .filter((t) => t.price > 0 && t.gap > 0)
+  // Calcolo della deviazione: Target Teorico (%) - Peso Reale (%)
+  const deviations = tickers.map((t) => {
+    const currentVal = (holdings[t.ticker] || 0) * (prices[t.ticker] || 0)
+    const currentWeight = portfolioValue > 0 ? (currentVal / portfolioValue) : 0
+    const deviation = t.target_weight - currentWeight
+    return { ...t, deviation, price: prices[t.ticker] || 0, currentWeight }
+  }).filter(t => t.price > 0) // Escludi asset senza prezzo
 
-  const totalGap = gaps.reduce((s, t) => s + t.gap, 0)
+  if (deviations.length === 0) return { buys: [] }
+
+  // Ordina per la deviazione positiva più alta (quello matematicamente più "indietro")
+  deviations.sort((a, b) => b.deviation - a.deviation)
 
   const buys = []
 
-  // Distribute budget proportionally to each ETF's gap
-  // This ensures all underweight ETFs get bought, maintaining allocation
-  for (const etf of gaps) {
-    const proportion = totalGap > 0 ? etf.gap / totalGap : 0
-    const idealSpend = available * proportion
-    const shares = Math.floor(idealSpend / etf.price)
-    if (shares <= 0) continue
-    buys.push({ ticker: etf.ticker, name: etf.name, shares, cost: shares * etf.price })
-  }
+  // Il "motore di default" del PAC suggerisce UN SOLO ETF da comprare con tutto il flusso di cassa mensile
+  const targetEtf = deviations[0]
 
-  // Spend leftover on most underweight ETF that we can still afford
-  const spent = buys.reduce((s, b) => s + b.cost, 0)
-  let leftover = available - spent
-  const remaining = gaps
-    .filter((t) => t.price <= leftover)
-    .sort((a, b) => b.gap - a.gap)
-  for (const etf of remaining) {
-    const extra = Math.floor(leftover / etf.price)
-    if (extra <= 0) continue
-    const existing = buys.find((b) => b.ticker === etf.ticker)
-    if (existing) {
-      existing.shares += extra
-      existing.cost += extra * etf.price
-    } else {
-      buys.push({ ticker: etf.ticker, name: etf.name, shares: extra, cost: extra * etf.price })
+  if (targetEtf && targetEtf.deviation > 0) {
+    const shares = Math.floor(available / targetEtf.price)
+    if (shares > 0) {
+      buys.push({
+        ticker: targetEtf.ticker,
+        name: targetEtf.name,
+        shares,
+        cost: shares * targetEtf.price,
+        deviation: targetEtf.deviation
+      })
     }
-    leftover -= extra * etf.price
   }
 
-  return { buys }
+  // Se l'ETF primario non è acquistabile (es. quota troppo costosa)
+  // potremmo valutare il secondo, ma per ora teniamo la logica semplice: l'utente deve accumulare o comprare a mano.
+
+  return { buys, deviations }
 }

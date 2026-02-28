@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import BottomNav from './components/BottomNav'
 import Dashboard from './pages/Dashboard'
 import PacPage from './pages/PacPage'
+import RebalancePage from './pages/RebalancePage'
 import MonteCarloPage from './pages/MonteCarloPage'
 import { usePortfolio } from './hooks/usePortfolio'
 import { fetchAllPrices, fetchAllHistory, clearPriceCache } from './utils/api'
@@ -64,6 +65,47 @@ export default function App() {
     return () => { cancelled = true }
   }, [])
 
+  // --- Data Export / Import Logic (PWA Resilience) ---
+  const handleExportData = () => {
+    const dataStr = localStorage.getItem('antigravity_portfolio')
+    if (!dataStr) return alert("Nessun dato da esportare.")
+
+    // Create a blob and download link
+    const blob = new Blob([dataStr], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `etf_tracker_backup_${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImportData = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const jsonStr = event.target.result
+        // Validate JSON basically
+        const parsed = JSON.parse(jsonStr)
+        if (parsed && typeof parsed === 'object' && parsed.holdings && parsed.transactions) {
+          localStorage.setItem('antigravity_portfolio', jsonStr)
+          alert("Dati importati con successo! Ricarico l'applicazione...")
+          window.location.reload()
+        } else {
+          alert("File JSON non valido o corrotto.")
+        }
+      } catch (err) {
+        alert("Errore durante l'importazione: " + err.message)
+      }
+    }
+    reader.readAsText(file)
+  }
+
   return (
     <>
       {/* Header */}
@@ -123,6 +165,15 @@ export default function App() {
           loading={loading}
         />
       )}
+      {tab === 'rebalance' && (
+        <RebalancePage
+          tickers={tickers}
+          holdings={portfolio.holdings}
+          prices={prices}
+          getPortfolioValue={portfolio.getPortfolioValue}
+          getWeights={portfolio.getWeights}
+        />
+      )}
       {tab === 'simulator' && (
         <MonteCarloPage
           tickers={tickers}
@@ -135,12 +186,42 @@ export default function App() {
       {tab === 'settings' && (
         <div className="flex-1 overflow-y-auto px-5 pt-2 pb-4">
           <h1 className="text-lg font-bold mb-4">Settings</h1>
+
+          <div className="rounded-2xl p-5 mb-5" style={{ background: 'var(--card)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--text-secondary)' }}>
+              Data Backup (PWA Resilience)
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleExportData}
+                className="w-full py-3 rounded-xl border border-gray-200 text-sm font-bold bg-white text-[#007AFF] text-center cursor-pointer active:scale-95 transition-transform"
+              >
+                Esporta Dati (Backup JSON)
+              </button>
+
+              <label
+                className="w-full py-3 rounded-xl border border-gray-200 text-sm font-bold bg-white text-[#34C759] cursor-pointer text-center block active:scale-95 transition-transform"
+              >
+                Importa Dati (Ripristino)
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={handleImportData}
+                />
+              </label>
+              <p className="text-[10px] text-center mt-1" style={{ color: 'var(--text-secondary)' }}>
+                Safari iOS potrebbe cancellare i dati inattivi. Salva spesso un backup del tuo storico.
+              </p>
+            </div>
+          </div>
+
           <div
             className="rounded-2xl p-5"
             style={{ background: 'var(--card)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
           >
             <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--text-secondary)' }}>
-              ETF Targets
+              ETF Configurations
             </p>
             {tickers.map((t) => (
               <div key={t.ticker} className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-b-0">
@@ -153,7 +234,7 @@ export default function App() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{t.name}</p>
                   <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                    {t.ticker} · {t.category}
+                    {t.ticker} · {t.vault ? `Vault ${t.vault}` : 'Cat'}
                   </p>
                 </div>
                 <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>

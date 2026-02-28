@@ -54,26 +54,50 @@ export function usePortfolio() {
     })
   }, [])
 
+  // Get Vault definitions from tickers configuration
+  const getVaultHoldings = useCallback((vaultId, allTickers) => {
+    if (!vaultId) return state.holdings
+
+    // Create a map of ticker -> vault for fast lookup
+    const vaultMap = {}
+    allTickers.forEach(t => vaultMap[t.ticker] = t.vault)
+
+    // Filter holdings by vault
+    const filtered = {}
+    for (const [ticker, qty] of Object.entries(state.holdings)) {
+      if (vaultMap[ticker] === vaultId) {
+        filtered[ticker] = qty
+      }
+    }
+    return filtered
+  }, [state.holdings])
+
   const getPortfolioValue = useCallback(
-    (prices) =>
-      Object.entries(state.holdings).reduce(
+    (prices, vaultId = null, allTickers = []) => {
+      const activeHoldings = vaultId ? getVaultHoldings(vaultId, allTickers) : state.holdings
+
+      return Object.entries(activeHoldings).reduce(
         (sum, [ticker, qty]) => sum + qty * (prices[ticker] || 0),
         0
-      ),
-    [state.holdings]
+      )
+    },
+    [state.holdings, getVaultHoldings]
   )
 
   const getWeights = useCallback(
-    (prices) => {
-      const total = getPortfolioValue(prices)
+    (prices, vaultId = null, allTickers = []) => {
+      const total = getPortfolioValue(prices, vaultId, allTickers)
       if (total === 0) return {}
+
+      const activeHoldings = vaultId ? getVaultHoldings(vaultId, allTickers) : state.holdings
       const w = {}
-      for (const [ticker, qty] of Object.entries(state.holdings)) {
+
+      for (const [ticker, qty] of Object.entries(activeHoldings)) {
         w[ticker] = (qty * (prices[ticker] || 0)) / total
       }
       return w
     },
-    [state.holdings, getPortfolioValue]
+    [state.holdings, getPortfolioValue, getVaultHoldings]
   )
 
   return {
@@ -83,5 +107,6 @@ export function usePortfolio() {
     manualTrade,
     getPortfolioValue,
     getWeights,
+    getVaultHoldings,
   }
 }
