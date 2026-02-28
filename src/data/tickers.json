@@ -1,8 +1,8 @@
 [
     {
-        "ticker": "EM710.MI",
-        "isin": "LU1681003024",
-        "name": "Amundi Euro Government Bond 7-10Y UCITS ETF Acc.",
+        "ticker": "C3M.PA",
+        "isin": "FR0010754200",
+        "name": "Amundi Euro Government Bond 0-6 M UCITS ETF Acc",
         "category": "Bond",
         "vault": "B",
         "target_weight": 0,
