@@ -7,7 +7,7 @@ import HoldingsList from '../components/HoldingsList'
 import EtfDetail from '../components/EtfDetail'
 import MetricsCard from '../components/MetricsCard'
 import InvestedVsValueChart from '../components/InvestedVsValueChart'
-import { Shield, TrendingUp } from 'lucide-react'
+import { Shield, TrendingUp, Coins } from 'lucide-react'
 
 const COLORS = ['#5856D6', '#34C759', '#FF9500', '#FF2D55', '#007AFF', '#AF52DE']
 
@@ -24,18 +24,22 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
   // Filter out Liquidity ETFs for allocation calculations (assuming Vault B only)
   const allocTickers = tickers.filter((t) => t.category !== 'Liquidity' && t.vault === 'B')
 
-  // Calculate Bond / Equity percentage based on Vault B only
+  // Calculate Bond / Equity / Commodity percentage based on Vault B only
   const bondPct = allocTickers
     .filter((t) => t.category === 'Bond')
     .reduce((s, t) => s + (vaultBWeights[t.ticker] || 0), 0)
   const equityPct = allocTickers
     .filter((t) => t.category === 'Equity')
     .reduce((s, t) => s + (vaultBWeights[t.ticker] || 0), 0)
+  const commPct = allocTickers
+    .filter((t) => t.category === 'Commodity')
+    .reduce((s, t) => s + (vaultBWeights[t.ticker] || 0), 0)
 
-  // Normalize Bond/Equity to 100% (excluding Vault B liquidity)
-  const sumBondEquity = bondPct + equityPct
-  const normalizedBondPct = sumBondEquity > 0 ? bondPct / sumBondEquity : 0.3
-  const normalizedEquityPct = sumBondEquity > 0 ? equityPct / sumBondEquity : 0.7
+  // Normalize assets to 100% (excluding Vault B liquidity)
+  const sumAll = bondPct + equityPct + commPct
+  const normalizedBondPct = sumAll > 0 ? bondPct / sumAll : 0.3
+  const normalizedEquityPct = sumAll > 0 ? equityPct / sumAll : 0.6
+  const normalizedCommPct = sumAll > 0 ? commPct / sumAll : 0.1
 
   const selectedTicker = selectedEtf ? tickers.find((t) => t.ticker === selectedEtf) : null
   const selectedIdx = selectedTicker ? tickers.indexOf(selectedTicker) : 0
@@ -93,8 +97,17 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
           style={{ background: '#e8f9ed', color: '#1B7A33' }}
         >
           <TrendingUp size={13} />
-          Equity {vaultBTotal > 0 ? (normalizedEquityPct * 100).toFixed(0) : 70}%
+          Equity {vaultBTotal > 0 ? (normalizedEquityPct * 100).toFixed(0) : 60}%
         </div>
+        {(commPct > 0 || totalValue === 0) && (
+          <div
+            className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-2xl"
+            style={{ background: '#FFF4E5', color: '#FF9500' }}
+          >
+            <Coins size={13} />
+            Gold {vaultBTotal > 0 ? (normalizedCommPct * 100).toFixed(0) : 10}%
+          </div>
+        )}
       </div>
 
       <GrowthChart history={history} holdings={holdings} onRangeChange={onRangeChange} transactions={transactions} />

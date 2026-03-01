@@ -45,10 +45,10 @@
         "sell_threshold": 0.13
     },
     {
-        "ticker": "IBCI.MI",
-        "isin": "IE00B0M62X26",
-        "name": "iShares Euro Inflation Linked Government Bond UCITS ETF",
-        "category": "Bond",
+        "ticker": "SGLN.MI",
+        "isin": "IE00B4ND3602",
+        "name": "iShares Physical Gold ETC",
+        "category": "Commodity",
         "vault": "B",
         "target_weight": 0.10,
         "sell_threshold": 0.13

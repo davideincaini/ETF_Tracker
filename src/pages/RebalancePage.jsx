@@ -197,7 +197,7 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-0.5">
                                                 <span className="font-bold text-sm text-gray-800">{t.ticker.split('.')[0]}</span>
-                                                <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded text-white" style={{ background: t.category === 'Bond' ? '#5856D6' : t.category === 'Liquidity' ? '#007AFF' : '#34C759' }}>{t.category.substring(0, 3)}</span>
+                                                <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded text-white" style={{ background: t.category === 'Bond' ? '#5856D6' : t.category === 'Liquidity' ? '#007AFF' : t.category === 'Commodity' ? '#FF9500' : '#34C759' }}>{t.category.substring(0, 3)}</span>
                                             </div>
                                             <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
                                                 Target: {(t.target_weight * 100).toFixed(0)}% | Attuale: <span style={{ color: currentWeight > threshold ? '#FF3B30' : 'inherit' }}>{(currentWeight * 100).toFixed(1)}%</span>

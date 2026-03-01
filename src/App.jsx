@@ -254,7 +254,7 @@ export default function App() {
               <div key={t.ticker} className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-b-0">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
-                  style={{ background: t.category === 'Bond' ? '#5856D6' : t.category === 'Liquidity' ? '#007AFF' : '#34C759' }}
+                  style={{ background: t.category === 'Bond' ? '#5856D6' : t.category === 'Liquidity' ? '#007AFF' : t.category === 'Commodity' ? '#FF9500' : '#34C759' }}
                 >
                   {t.ticker.charAt(0)}
                 </div>
