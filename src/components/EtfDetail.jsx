@@ -62,10 +62,10 @@ export default function EtfDetail({ ticker, name, history, holdings, price, colo
               className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold"
               style={{ background: color }}
             >
-              {ticker.replace('.MI', '').slice(0, 2)}
+              {ticker.replace('.MI', '').replace('.PA', '').replace('.L', '').slice(0, 2)}
             </div>
             <div>
-              <p className="text-base font-bold">{ticker.replace('.MI', '')}</p>
+              <p className="text-base font-bold">{ticker.replace('.MI', '').replace('.PA', '').replace('.L', '')}</p>
               <p className="text-[11px] truncate max-w-[200px]" style={{ color: 'var(--text-secondary)' }}>{name}</p>
             </div>
           </div>

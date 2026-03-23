@@ -21,7 +21,7 @@ export default function MetricsCard({ tickers, holdings, prices, transactions, h
     const drift = Math.abs(actualWeight - t.target_weight) * 100
     if (drift > maxDrift) {
       maxDrift = drift
-      maxDriftTicker = t.ticker.replace('.MI', '')
+      maxDriftTicker = t.ticker.replace('.MI', '').replace('.PA', '').replace('.L', '')
     }
   }
 
@@ -36,8 +36,8 @@ export default function MetricsCard({ tickers, holdings, prices, transactions, h
     const avgCost = b.totalCost / b.totalShares
     const currentPrice = prices[t.ticker] || 0
     const pct = avgCost > 0 ? ((currentPrice - avgCost) / avgCost) * 100 : 0
-    if (pct > bestPerf.pct) bestPerf = { ticker: t.ticker.replace('.MI', ''), pct }
-    if (pct < worstPerf.pct) worstPerf = { ticker: t.ticker.replace('.MI', ''), pct }
+    if (pct > bestPerf.pct) bestPerf = { ticker: t.ticker.replace('.MI', '').replace('.PA', '').replace('.L', ''), pct }
+    if (pct < worstPerf.pct) worstPerf = { ticker: t.ticker.replace('.MI', '').replace('.PA', '').replace('.L', ''), pct }
   }
 
   // Daily change from history

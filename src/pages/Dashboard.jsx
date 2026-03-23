@@ -9,9 +9,15 @@ import MetricsCard from '../components/MetricsCard'
 import InvestedVsValueChart from '../components/InvestedVsValueChart'
 import { Shield, TrendingUp, Coins } from 'lucide-react'
 
-const COLORS = ['#5856D6', '#34C759', '#FF9500', '#FF2D55', '#007AFF', '#AF52DE']
+const CATEGORY_COLORS = {
+  Equity: '#34C759',
+  Cash: '#5856D6',
+  Bond: '#5856D6',
+  Commodity: '#FF9500',
+  Liquidity: '#007AFF',
+}
 
-export default function Dashboard({ tickers, holdings, transactions, prices, loading, getPortfolioValue, getWeights, history, onRangeChange, priceMetadata = {} }) {
+export default function Dashboard({ tickers, holdings, transactions, prices, loading, getPortfolioValue, getWeights, history, onRangeChange, priceMetadata = {}, assetATH = {} }) {
   const [selectedEtf, setSelectedEtf] = useState(null)
 
   // Vault calculations
@@ -21,12 +27,12 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
   const totalValue = vaultBTotal + vaultATotal
   const invested = transactions.reduce((s, tx) => s + (tx.type === 'sell' ? -tx.cost : tx.cost), 0)
 
-  // Filter out Liquidity ETFs for allocation calculations (assuming Vault B only)
+  // Filter out Liquidity ETFs for allocation calculations (Vault B only)
   const allocTickers = tickers.filter((t) => t.category !== 'Liquidity' && t.vault === 'B')
 
-  // Calculate Bond / Equity / Commodity percentage based on Vault B only
-  const bondPct = allocTickers
-    .filter((t) => t.category === 'Bond')
+  // Calculate Cash / Equity / Commodity percentage based on Vault B only
+  const cashPct = allocTickers
+    .filter((t) => t.category === 'Cash' || t.category === 'Bond')
     .reduce((s, t) => s + (vaultBWeights[t.ticker] || 0), 0)
   const equityPct = allocTickers
     .filter((t) => t.category === 'Equity')
@@ -36,13 +42,15 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
     .reduce((s, t) => s + (vaultBWeights[t.ticker] || 0), 0)
 
   // Normalize assets to 100% (excluding Vault B liquidity)
-  const sumAll = bondPct + equityPct + commPct
-  const normalizedBondPct = sumAll > 0 ? bondPct / sumAll : 0.3
-  const normalizedEquityPct = sumAll > 0 ? equityPct / sumAll : 0.6
+  const sumAll = cashPct + equityPct + commPct
+  const normalizedCashPct = sumAll > 0 ? cashPct / sumAll : 0.2
+  const normalizedEquityPct = sumAll > 0 ? equityPct / sumAll : 0.7
   const normalizedCommPct = sumAll > 0 ? commPct / sumAll : 0.1
 
   const selectedTicker = selectedEtf ? tickers.find((t) => t.ticker === selectedEtf) : null
-  const selectedIdx = selectedTicker ? tickers.indexOf(selectedTicker) : 0
+
+  // Only Vault B tickers for HoldingsList
+  const vaultBTickers = tickers.filter(t => t.vault === 'B')
 
   return (
     <div className="flex-1 overflow-y-auto px-5 pt-1 pb-4">
@@ -90,14 +98,14 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
           style={{ background: '#EDE7F6', color: '#5856D6' }}
         >
           <Shield size={13} />
-          Bond {vaultBTotal > 0 ? (normalizedBondPct * 100).toFixed(0) : 30}%
+          Cash {vaultBTotal > 0 ? (normalizedCashPct * 100).toFixed(0) : 20}%
         </div>
         <div
           className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-2xl"
           style={{ background: '#e8f9ed', color: '#1B7A33' }}
         >
           <TrendingUp size={13} />
-          Equity {vaultBTotal > 0 ? (normalizedEquityPct * 100).toFixed(0) : 60}%
+          Equity {vaultBTotal > 0 ? (normalizedEquityPct * 100).toFixed(0) : 70}%
         </div>
         {(commPct > 0 || totalValue === 0) && (
           <div
@@ -125,13 +133,14 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
       <AllocationChart tickers={allocTickers} weights={vaultBWeights} holdings={holdings} />
 
       <HoldingsList
-        tickers={tickers}
+        tickers={vaultBTickers}
         holdings={holdings}
         prices={prices}
-        weights={getWeights(prices)} // Passiamo tutti i pesi basati sul total value per la lista generale
+        weights={vaultBWeights}
         history={history}
         onSelect={setSelectedEtf}
         priceMetadata={priceMetadata}
+        assetATH={assetATH}
       />
 
       <InvestedVsValueChart
@@ -147,10 +156,10 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
           history={history}
           holdings={holdings}
           price={prices[selectedEtf] || 0}
-          color={COLORS[selectedIdx % COLORS.length]}
+          color={CATEGORY_COLORS[selectedTicker.category] || '#8E8E93'}
           transactions={transactions}
           targetWeight={selectedTicker.target_weight}
-          totalValue={selectedTicker.vault === 'B' ? vaultBTotal : vaultATotal} // Targets sono relativi al loro vault
+          totalValue={selectedTicker.vault === 'B' ? vaultBTotal : vaultATotal}
           onClose={() => setSelectedEtf(null)}
         />
       )}

@@ -1,10 +1,17 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
-const STORAGE_KEY = 'antigravity_portfolio'
+const STORAGE_PREFIX = 'antigravity_portfolio'
 
-function loadState() {
+function getStorageKey(portfolioId) {
+  // Legacy key for backward compatibility with existing data
+  if (!portfolioId || portfolioId === 'bilanciere') return STORAGE_PREFIX
+  return `${STORAGE_PREFIX}_${portfolioId}`
+}
+
+function loadState(portfolioId) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const key = getStorageKey(portfolioId)
+    const raw = localStorage.getItem(key)
     if (raw) {
       const parsed = JSON.parse(raw);
       return {
@@ -17,12 +24,23 @@ function loadState() {
   return { holdings: {}, transactions: [], customThresholds: {} }
 }
 
-export function usePortfolio() {
-  const [state, setState] = useState(loadState)
+export function usePortfolio(portfolioId = 'bilanciere') {
+  const [state, setState] = useState(() => loadState(portfolioId))
+  const currentPortfolioRef = useRef(portfolioId)
 
+  // Reload state when portfolioId changes
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
+    if (currentPortfolioRef.current !== portfolioId) {
+      currentPortfolioRef.current = portfolioId
+      setState(loadState(portfolioId))
+    }
+  }, [portfolioId])
+
+  // Persist to localStorage
+  useEffect(() => {
+    const key = getStorageKey(portfolioId)
+    localStorage.setItem(key, JSON.stringify(state))
+  }, [state, portfolioId])
 
   const addTransactions = useCallback((buys) => {
     setState((prev) => {
@@ -86,11 +104,9 @@ export function usePortfolio() {
   const getVaultHoldings = useCallback((vaultId, allTickers) => {
     if (!vaultId) return state.holdings
 
-    // Create a map of ticker -> vault for fast lookup
     const vaultMap = {}
     allTickers.forEach(t => vaultMap[t.ticker] = t.vault)
 
-    // Filter holdings by vault
     const filtered = {}
     for (const [ticker, qty] of Object.entries(state.holdings)) {
       if (vaultMap[ticker] === vaultId) {

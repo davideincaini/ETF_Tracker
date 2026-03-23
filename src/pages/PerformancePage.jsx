@@ -230,7 +230,7 @@ export default function PerformancePage({ tickers, transactions, prices }) {
                                         <div key={etf.ticker} className="flex justify-between items-center p-3 rounded-2xl bg-white" style={{ border: '1px solid #E5E5EA' }}>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] text-gray-600 bg-gray-100">
-                                                    {etf.ticker.replace('.MI', '')}
+                                                    {etf.ticker.replace('.MI', '').replace('.PA', '').replace('.L', '')}
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-bold text-gray-800">

@@ -1,0 +1,14 @@
+[
+    {
+        "id": "bilanciere",
+        "name": "Bilanciere",
+        "description": "70/20/10 — USA + World ex-USA + EM",
+        "color": "#34C759"
+    },
+    {
+        "id": "global",
+        "name": "Global",
+        "description": "70/20/10 — MSCI ACWI",
+        "color": "#007AFF"
+    }
+]

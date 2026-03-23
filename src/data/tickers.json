@@ -1,21 +1,14 @@
 [
     {
-        "ticker": "C3M.PA",
-        "isin": "FR0010754200",
-        "name": "Amundi Euro Government Bond 0-6 M UCITS ETF Acc",
-        "category": "Bond",
-        "vault": "B",
-        "target_weight": 0.10,
-        "sell_threshold": 0.13
-    },
-    {
         "ticker": "XDPU.MI",
         "isin": "IE000Z9S9X10",
         "name": "Xtrackers S&P 500 UCITS ETF 4C",
         "category": "Equity",
         "vault": "B",
         "target_weight": 0.35,
-        "sell_threshold": 0.45
+        "sell_threshold": 0.45,
+        "equity_internal_target": 0.50,
+        "portfolio": "bilanciere"
     },
     {
         "ticker": "EXUS.MI",
@@ -24,7 +17,9 @@
         "category": "Equity",
         "vault": "B",
         "target_weight": 0.28,
-        "sell_threshold": 0.36
+        "sell_threshold": 0.38,
+        "equity_internal_target": 0.40,
+        "portfolio": "bilanciere"
     },
     {
         "ticker": "EIMI.MI",
@@ -33,16 +28,19 @@
         "category": "Equity",
         "vault": "B",
         "target_weight": 0.07,
-        "sell_threshold": 0.11
+        "sell_threshold": 0.15,
+        "equity_internal_target": 0.10,
+        "portfolio": "bilanciere"
     },
     {
-        "ticker": "X25E.MI",
-        "isin": "LU0290357846",
-        "name": "Xtrackers II Eurozone Government Bond 25+ UCITS ETF 1C",
-        "category": "Bond",
+        "ticker": "C3M.PA",
+        "isin": "FR0010754200",
+        "name": "Amundi Euro Government Bond 0-6 M UCITS ETF Acc",
+        "category": "Cash",
         "vault": "B",
-        "target_weight": 0.10,
-        "sell_threshold": 0.13
+        "target_weight": 0.20,
+        "sell_threshold": 0,
+        "portfolio": "bilanciere"
     },
     {
         "ticker": "SGLN.MI",
@@ -51,7 +49,8 @@
         "category": "Commodity",
         "vault": "B",
         "target_weight": 0.10,
-        "sell_threshold": 0.13
+        "sell_threshold": 0.15,
+        "portfolio": "bilanciere"
     },
     {
         "ticker": "XEON.MI",
@@ -60,6 +59,38 @@
         "category": "Liquidity",
         "vault": "A",
         "target_weight": 0,
-        "sell_threshold": 0
+        "sell_threshold": 0,
+        "portfolio": "bilanciere"
+    },
+    {
+        "ticker": "ISAC.L",
+        "isin": "IE00B6R52259",
+        "name": "iShares MSCI ACWI UCITS ETF (Acc)",
+        "category": "Equity",
+        "vault": "B",
+        "target_weight": 0.70,
+        "sell_threshold": 0.80,
+        "equity_internal_target": 1.00,
+        "portfolio": "global"
+    },
+    {
+        "ticker": "XEON.MI",
+        "isin": "IE00BM0RFN48",
+        "name": "Xtrackers EUR Overnight Rate Swap UCITS ETF 1C",
+        "category": "Cash",
+        "vault": "B",
+        "target_weight": 0.20,
+        "sell_threshold": 0,
+        "portfolio": "global"
+    },
+    {
+        "ticker": "SGLN.MI",
+        "isin": "IE00B4ND3602",
+        "name": "iShares Physical Gold ETC",
+        "category": "Commodity",
+        "vault": "B",
+        "target_weight": 0.10,
+        "sell_threshold": 0.15,
+        "portfolio": "global"
     }
 ]

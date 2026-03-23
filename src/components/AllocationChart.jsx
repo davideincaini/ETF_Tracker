@@ -1,24 +1,38 @@
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { useState } from 'react'
 
-const COLORS = ['#5856D6', '#34C759', '#FF9500', '#FF2D55', '#007AFF', '#AF52DE']
+const CATEGORY_COLORS = {
+  Equity: '#34C759',
+  Cash: '#5856D6',
+  Bond: '#5856D6',
+  Commodity: '#FF9500',
+  Liquidity: '#007AFF',
+}
+
 const VIEWS = [
   { id: 'portfolio', label: 'Portfolio' },
   { id: 'equity', label: 'Equity' },
   { id: 'target', label: 'vs Target' },
 ]
 
+function cleanTicker(ticker) {
+  return ticker.replace('.MI', '').replace('.PA', '').replace('.L', '')
+}
+
 export default function AllocationChart({ tickers, weights, holdings }) {
   const [view, setView] = useState('portfolio')
 
-  // Portfolio allocation: all ETFs
-  const portfolioData = tickers
-    .map((t, i) => {
+  // Filter: only Vault B with target_weight > 0
+  const allocTickers = tickers.filter(t => t.vault === 'B' && t.target_weight > 0)
+
+  // Portfolio allocation: all allocTickers
+  const portfolioData = allocTickers
+    .map((t) => {
       const pct = Math.round((weights[t.ticker] || 0) * 1000) / 10
       return {
-        name: t.ticker.replace('.MI', ''),
+        name: cleanTicker(t.ticker),
         value: pct,
-        color: COLORS[i % COLORS.length],
+        color: CATEGORY_COLORS[t.category] || '#8E8E93',
         category: t.category,
         qty: holdings?.[t.ticker] || 0,
       }
@@ -26,18 +40,17 @@ export default function AllocationChart({ tickers, weights, holdings }) {
     .filter((d) => d.value > 0)
 
   // Equity-only allocation: re-normalize equity ETFs to 100%
-  const equityTickers = tickers.filter((t) => t.category === 'Equity')
+  const equityTickers = allocTickers.filter((t) => t.category === 'Equity')
   const equityTotal = equityTickers.reduce((s, t) => s + (weights[t.ticker] || 0), 0)
   const equityData = equityTickers
     .map((t) => {
-      const idx = tickers.indexOf(t)
       const pct = equityTotal > 0
         ? Math.round(((weights[t.ticker] || 0) / equityTotal) * 1000) / 10
         : 0
       return {
-        name: t.ticker.replace('.MI', ''),
+        name: cleanTicker(t.ticker),
         value: pct,
-        color: COLORS[idx % COLORS.length],
+        color: CATEGORY_COLORS[t.category] || '#8E8E93',
         category: t.category,
         qty: holdings?.[t.ticker] || 0,
       }
@@ -45,8 +58,8 @@ export default function AllocationChart({ tickers, weights, holdings }) {
     .filter((d) => d.value > 0)
 
   // Target bar chart data
-  const barData = tickers.map((t) => ({
-    name: t.ticker.replace('.MI', ''),
+  const barData = allocTickers.map((t) => ({
+    name: cleanTicker(t.ticker),
     Actual: Math.round((weights[t.ticker] || 0) * 1000) / 10,
     Target: Math.round(t.target_weight * 1000) / 10,
   }))
@@ -55,26 +68,21 @@ export default function AllocationChart({ tickers, weights, holdings }) {
   const hasPieData = pieData.length > 0
 
   // Fallback targets for empty state
-  const targetPortfolio = tickers.map((t, i) => ({
-    name: t.ticker.replace('.MI', ''),
+  const targetPortfolio = allocTickers.map((t) => ({
+    name: cleanTicker(t.ticker),
     value: Math.round(t.target_weight * 1000) / 10,
-    color: COLORS[i % COLORS.length],
+    color: CATEGORY_COLORS[t.category] || '#8E8E93',
     category: t.category,
     qty: 0,
   }))
-  const equityTargetTotal = tickers.filter((t) => t.category === 'Equity').reduce((s, t) => s + t.target_weight, 0)
-  const targetEquity = tickers
-    .filter((t) => t.category === 'Equity')
-    .map((t) => {
-      const idx = tickers.indexOf(t)
-      return {
-        name: t.ticker.replace('.MI', ''),
-        value: Math.round((t.target_weight / equityTargetTotal) * 1000) / 10,
-        color: COLORS[idx % COLORS.length],
-        category: t.category,
-        qty: 0,
-      }
-    })
+  const equityTargetTotal = equityTickers.reduce((s, t) => s + t.target_weight, 0)
+  const targetEquity = equityTickers.map((t) => ({
+    name: cleanTicker(t.ticker),
+    value: Math.round((t.target_weight / equityTargetTotal) * 1000) / 10,
+    color: CATEGORY_COLORS[t.category] || '#8E8E93',
+    category: t.category,
+    qty: 0,
+  }))
 
   const displayPieData = hasPieData ? pieData : (view === 'portfolio' ? targetPortfolio : targetEquity)
 

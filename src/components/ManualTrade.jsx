@@ -86,10 +86,10 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                   style={{ background: COLORS[i % COLORS.length] }}
                 >
-                  {t.ticker.replace('.MI', '').slice(0, 2)}
+                  {t.ticker.replace('.MI', '').replace('.PA', '').replace('.L', '').slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{t.ticker.replace('.MI', '')}</p>
+                  <p className="text-sm font-semibold">{t.ticker.replace('.MI', '').replace('.PA', '').replace('.L', '')}</p>
                   <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
                     {held} held · €{price.toFixed(2)}/share
                   </p>
@@ -115,7 +115,7 @@ export default function ManualTrade({ tickers, holdings, prices, onTrade }) {
           style={{ background: 'var(--card)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
         >
           <p className="text-sm font-bold mb-3">
-            {side === 'buy' ? 'Buy' : 'Sell'} {selected.replace('.MI', '')}
+            {side === 'buy' ? 'Buy' : 'Sell'} {selected.replace('.MI', '').replace('.PA', '').replace('.L', '')}
           </p>
           {/* Price input (pre-filled from API, editable) */}
           <div className="mb-3">
