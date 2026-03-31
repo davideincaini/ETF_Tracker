@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { fetchAllMaxHistory } from '../utils/api'
 import { TrendingUp, TrendingDown, Clock } from 'lucide-react'
+import ReturnsChart from '../components/ReturnsChart'
 
 export default function PerformancePage({ tickers, transactions, prices }) {
     const [historyData, setHistoryData] = useState(null)
@@ -179,6 +180,8 @@ export default function PerformancePage({ tickers, transactions, prices }) {
                     Crescita del capitale anno su anno
                 </p>
             </div>
+
+            {historyData && <ReturnsChart historyData={historyData} transactions={transactions} tickers={tickers} />}
 
             <div className="flex flex-col gap-5">
                 {yearlyData.map(data => {
