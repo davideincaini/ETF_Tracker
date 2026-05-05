@@ -1,4 +1,4 @@
-# Antigravity — ETF Portfolio & Smart PAC Manager
+#  ETF Portfolio & Smart PAC Manager
 
 A React PWA for tracking an ETF portfolio on Borsa Italiana and computing monthly rebalancing orders via a greedy buy-only algorithm. Built for personal use, deployed in production.
 
