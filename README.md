@@ -2,7 +2,7 @@
 
 A React PWA for tracking an ETF portfolio on Borsa Italiana and computing monthly rebalancing orders via a greedy buy-only algorithm. Built for personal use, deployed in production.
 
-🔗 **Live app:** [etf-tracker-three.vercel.app](https://etf-tracker-three.vercel.app)
+
 
 ---
 
