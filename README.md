@@ -2,7 +2,8 @@
 
 A React PWA for tracking an ETF portfolio on Borsa Italiana and computing monthly rebalancing orders via a greedy buy-only algorithm. Built for personal use, deployed in production.
 
-
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20App-blue?style=for-the-badge&logo=github)](https://davideincaini.github.io/ETF_Tracker/)
+[![PWA](https://img.shields.io/badge/PWA-Installable%20on%20iPhone-brightgreen?style=for-the-badge&logo=pwa)](https://davideincaini.github.io/ETF_Tracker/)
 
 ---
 
