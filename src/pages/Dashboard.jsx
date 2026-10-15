@@ -8,6 +8,7 @@ import EtfDetail from '../components/EtfDetail'
 import MetricsCard from '../components/MetricsCard'
 import InvestedVsValueChart from '../components/InvestedVsValueChart'
 import { Shield, TrendingUp, Coins } from 'lucide-react'
+import { computeTargets } from '../utils/rebalance'
 
 const CATEGORY_COLORS = {
   Equity: '#34C759',
@@ -46,11 +47,15 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
     .filter((t) => t.category === 'Commodity')
     .reduce((s, t) => s + (vaultBWeights[t.ticker] || 0), 0)
 
+  // This portfolio's own targets (70/20/10 for Bilanciere, 60/40 for Global),
+  // shown when there are no holdings yet instead of fixed 70/20/10 numbers.
+  const { defensive: defensiveTarget, equity: equityTarget, gold: goldTarget } = computeTargets(allocTickers)
+
   // Normalize assets to 100% (excluding Vault B liquidity)
   const sumAll = cashPct + equityPct + commPct
-  const normalizedCashPct = sumAll > 0 ? cashPct / sumAll : 0.2
-  const normalizedEquityPct = sumAll > 0 ? equityPct / sumAll : 0.7
-  const normalizedCommPct = sumAll > 0 ? commPct / sumAll : 0.1
+  const normalizedCashPct = sumAll > 0 ? cashPct / sumAll : defensiveTarget
+  const normalizedEquityPct = sumAll > 0 ? equityPct / sumAll : equityTarget
+  const normalizedCommPct = sumAll > 0 ? commPct / sumAll : goldTarget
 
   const selectedTicker = selectedEtf ? tickers.find((t) => t.ticker === selectedEtf) : null
 
@@ -103,22 +108,22 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
           style={{ background: '#EDE7F6', color: '#5856D6' }}
         >
           <Shield size={13} />
-          {defensiveLabel} {vaultBTotal > 0 ? (normalizedCashPct * 100).toFixed(0) : 20}%
+          {defensiveLabel} {(normalizedCashPct * 100).toFixed(0)}%
         </div>
         <div
           className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-2xl"
           style={{ background: '#e8f9ed', color: '#1B7A33' }}
         >
           <TrendingUp size={13} />
-          Equity {vaultBTotal > 0 ? (normalizedEquityPct * 100).toFixed(0) : 70}%
+          Equity {(normalizedEquityPct * 100).toFixed(0)}%
         </div>
-        {(commPct > 0 || totalValue === 0) && (
+        {(commPct > 0 || (totalValue === 0 && goldTarget > 0)) && (
           <div
             className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-2xl"
             style={{ background: '#FFF4E5', color: '#FF9500' }}
           >
             <Coins size={13} />
-            Gold {vaultBTotal > 0 ? (normalizedCommPct * 100).toFixed(0) : 10}%
+            Gold {(normalizedCommPct * 100).toFixed(0)}%
           </div>
         )}
       </div>

@@ -8,7 +8,7 @@
     {
         "id": "global",
         "name": "Global",
-        "description": "70/20/10 — MSCI ACWI",
+        "description": "60/40 — MSCI ACWI + Gov. Euro 7-10Y",
         "color": "#007AFF"
     }
 ]

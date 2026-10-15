@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Clock, TrendingDown, TrendingUp, Shield, Zap, Scale, Gem } from 'lucide-react'
-import { analyzePortfolio, EUPHORIA_THRESHOLD, GOLD_LOWER_BAND, GOLD_UPPER_BAND, EQUITY_TARGET, DEFENSIVE_TARGET, GOLD_TARGET, DRAWDOWN_ALERT } from '../utils/rebalance'
+import { analyzePortfolio, DRAWDOWN_ALERT } from '../utils/rebalance'
 
+// Drop the exchange suffix, whatever it is (.MI, .PA, .DE, .L, …)
 function cleanTicker(ticker) {
-  return ticker.replace('.MI', '').replace('.PA', '').replace('.L', '')
+  return ticker.split('.')[0]
 }
 
 // ─── Order Card ──────────────────────────────────────────────────────
@@ -81,10 +82,21 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
   }, [tickers, holdings, prices, portfolioId])
 
   const {
-    totalValue, equityValue, equityWeight, equityATH, equityDrawdown,
+    targets, totalValue, equityValue, equityWeight, equityATH, equityDrawdown,
     defensiveETF, defensiveWeight, goldValue, goldWeight,
     equityInternals, euphoriaSignal, internalSignal, goldSignal, timeWindow
   } = analysis
+
+  // This portfolio's own targets (Bilanciere 70/20/10, Global 60/40), kept under
+  // the names the markup below already used.
+  const EQUITY_TARGET = targets.equity
+  const DEFENSIVE_TARGET = targets.defensive
+  const GOLD_TARGET = targets.gold
+  const EUPHORIA_THRESHOLD = targets.euphoriaThreshold
+  const GOLD_LOWER_BAND = targets.goldLower
+  const GOLD_UPPER_BAND = targets.goldUpper
+  // No gold target (Global) -> no gold tile and no Gold Shield section
+  const hasGold = GOLD_TARGET > 0
 
   // "Bond" for EM710 (Bilanciere), "Cash" for XEON (Global): the label follows
   // the ETF's real category instead of being hard-coded.
@@ -124,7 +136,7 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
 
       {/* Macro Overview */}
       {totalValue > 0 && (
-        <div className="grid grid-cols-3 gap-2 mb-5">
+        <div className={`grid ${hasGold ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-5`}>
           <div className="p-3 rounded-2xl text-center" style={{ background: '#E8F9ED' }}>
             <p className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#1B7A33' }}>Equity</p>
             <p className="text-lg font-black" style={{ color: '#34C759' }}>{(equityWeight * 100).toFixed(1)}%</p>
@@ -135,11 +147,13 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
             <p className="text-lg font-black" style={{ color: '#5856D6' }}>{(defensiveWeight * 100).toFixed(1)}%</p>
             <p className="text-[9px]" style={{ color: '#7B7ADE' }}>target {(DEFENSIVE_TARGET * 100).toFixed(0)}%</p>
           </div>
-          <div className="p-3 rounded-2xl text-center" style={{ background: '#FFF4E5' }}>
-            <p className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#FF9500' }}>Oro</p>
-            <p className="text-lg font-black" style={{ color: '#FF9500' }}>{(goldWeight * 100).toFixed(1)}%</p>
-            <p className="text-[9px]" style={{ color: '#C77700' }}>target {(GOLD_TARGET * 100).toFixed(0)}%</p>
-          </div>
+          {hasGold && (
+            <div className="p-3 rounded-2xl text-center" style={{ background: '#FFF4E5' }}>
+              <p className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#FF9500' }}>Oro</p>
+              <p className="text-lg font-black" style={{ color: '#FF9500' }}>{(goldWeight * 100).toFixed(1)}%</p>
+              <p className="text-[9px]" style={{ color: '#C77700' }}>target {(GOLD_TARGET * 100).toFixed(0)}%</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -243,61 +257,63 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
           )}
         </SensorSection>
 
-        {/* Sensor D: Gold Shield */}
-        <SensorSection
-          icon={Gem}
-          title="Gold Shield"
-          subtitle={`Peso oro: ${(goldWeight * 100).toFixed(1)}% (banda ${(GOLD_LOWER_BAND * 100).toFixed(0)}%–${(GOLD_UPPER_BAND * 100).toFixed(0)}%)`}
-          color="#FF9500"
-          isActive={goldSignal.isLow || goldSignal.isHigh}
-          defaultOpen={goldSignal.isLow || goldSignal.isHigh}
-        >
-          <div className="p-4 rounded-2xl mb-3" style={{ background: 'var(--bg)' }}>
-            <div className="flex justify-between items-center">
-              <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Peso Oro</p>
-              <p className="text-lg font-black" style={{
-                color: goldSignal.isLow ? '#FF3B30' : goldSignal.isHigh ? '#FF9500' : '#34C759'
-              }}>
-                {(goldWeight * 100).toFixed(1)}%
-              </p>
+        {/* Sensor D: Gold Shield — only for portfolios with a gold target */}
+        {hasGold && (
+          <SensorSection
+            icon={Gem}
+            title="Gold Shield"
+            subtitle={`Peso oro: ${(goldWeight * 100).toFixed(1)}% (banda ${(GOLD_LOWER_BAND * 100).toFixed(0)}%–${(GOLD_UPPER_BAND * 100).toFixed(0)}%)`}
+            color="#FF9500"
+            isActive={goldSignal.isLow || goldSignal.isHigh}
+            defaultOpen={goldSignal.isLow || goldSignal.isHigh}
+          >
+            <div className="p-4 rounded-2xl mb-3" style={{ background: 'var(--bg)' }}>
+              <div className="flex justify-between items-center">
+                <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Peso Oro</p>
+                <p className="text-lg font-black" style={{
+                  color: goldSignal.isLow ? '#FF3B30' : goldSignal.isHigh ? '#FF9500' : '#34C759'
+                }}>
+                  {(goldWeight * 100).toFixed(1)}%
+                </p>
+              </div>
+              {/* Band visualization */}
+              <div className="relative w-full h-6 mt-3 rounded-full overflow-hidden" style={{ background: '#E5E5EA' }}>
+                {/* Safe zone */}
+                <div className="absolute h-full" style={{
+                  left: `${GOLD_LOWER_BAND / 0.25 * 100}%`,
+                  width: `${(GOLD_UPPER_BAND - GOLD_LOWER_BAND) / 0.25 * 100}%`,
+                  background: '#E8F9ED'
+                }} />
+                {/* Current position marker */}
+                <div className="absolute top-0 h-full w-1 rounded-full" style={{
+                  left: `${Math.min(goldWeight / 0.25, 1) * 100}%`,
+                  background: goldSignal.isLow ? '#FF3B30' : goldSignal.isHigh ? '#FF9500' : '#34C759'
+                }} />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>0%</span>
+                <span className="text-[9px] font-bold" style={{ color: '#FF3B30' }}>{(GOLD_LOWER_BAND * 100).toFixed(0)}%</span>
+                <span className="text-[9px] font-bold" style={{ color: '#34C759' }}>{(GOLD_TARGET * 100).toFixed(0)}%</span>
+                <span className="text-[9px] font-bold" style={{ color: '#FF9500' }}>{(GOLD_UPPER_BAND * 100).toFixed(0)}%</span>
+                <span className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>25%</span>
+              </div>
             </div>
-            {/* Band visualization */}
-            <div className="relative w-full h-6 mt-3 rounded-full overflow-hidden" style={{ background: '#E5E5EA' }}>
-              {/* Safe zone */}
-              <div className="absolute h-full" style={{
-                left: `${GOLD_LOWER_BAND / 0.25 * 100}%`,
-                width: `${(GOLD_UPPER_BAND - GOLD_LOWER_BAND) / 0.25 * 100}%`,
-                background: '#E8F9ED'
-              }} />
-              {/* Current position marker */}
-              <div className="absolute top-0 h-full w-1 rounded-full" style={{
-                left: `${Math.min(goldWeight / 0.25, 1) * 100}%`,
-                background: goldSignal.isLow ? '#FF3B30' : goldSignal.isHigh ? '#FF9500' : '#34C759'
-              }} />
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>0%</span>
-              <span className="text-[9px] font-bold" style={{ color: '#FF3B30' }}>{(GOLD_LOWER_BAND * 100).toFixed(0)}%</span>
-              <span className="text-[9px] font-bold" style={{ color: '#34C759' }}>{(GOLD_TARGET * 100).toFixed(0)}%</span>
-              <span className="text-[9px] font-bold" style={{ color: '#FF9500' }}>{(GOLD_UPPER_BAND * 100).toFixed(0)}%</span>
-              <span className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>25%</span>
-            </div>
-          </div>
 
-          {/* Below the band there is nothing to sell: the monthly PAC fixes it */}
-          {goldSignal.handledByPac && (
-            <div className="p-3.5 rounded-2xl text-xs leading-snug" style={{ background: '#FFF4E5', color: '#A25F00' }}>
-              Oro sotto il {(GOLD_LOWER_BAND * 100).toFixed(0)}%: nessuna vendita necessaria. Il prossimo PAC indirizzerà i nuovi versamenti verso l'oro finché non torna vicino al {(GOLD_TARGET * 100).toFixed(0)}%.
-            </div>
-          )}
+            {/* Below the band there is nothing to sell: the monthly PAC fixes it */}
+            {goldSignal.handledByPac && (
+              <div className="p-3.5 rounded-2xl text-xs leading-snug" style={{ background: '#FFF4E5', color: '#A25F00' }}>
+                Oro sotto il {(GOLD_LOWER_BAND * 100).toFixed(0)}%: nessuna vendita necessaria. Il prossimo PAC indirizzerà i nuovi versamenti verso l'oro finché non torna vicino al {(GOLD_TARGET * 100).toFixed(0)}%.
+              </div>
+            )}
 
-          {goldSignal.orders.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#FF9500' }}>Ordini Suggeriti</p>
-              {goldSignal.orders.map((o, i) => <OrderCard key={i} order={o} />)}
-            </div>
-          )}
-        </SensorSection>
+            {goldSignal.orders.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#FF9500' }}>Ordini Suggeriti</p>
+                {goldSignal.orders.map((o, i) => <OrderCard key={i} order={o} />)}
+              </div>
+            )}
+          </SensorSection>
+        )}
       </div>
 
       {/* ATH Info */}
