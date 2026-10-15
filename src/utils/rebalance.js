@@ -1,11 +1,15 @@
 /**
  * Rebalancing Engine — "Bilanciere 70/20/10"
  *
- * Architecture:
- *   Motore Azionario (70%): XDPU (50%), EXUS (40%), EIMI (10%)
- *   Parte difensiva  (20%): EM710 — obbligazioni governative euro 7-10 anni
- *                           (nel portafoglio Global: XEON)
- *   Scudo Fiat       (10%): SGLN — Oro fisico, bande ampie (7%–15%)
+ * Architecture (targets come from tickers.json, per portfolio):
+ *   Bilanciere 70/20/10
+ *     Motore Azionario (70%): XDPU (50%), EXUS (40%), EIMI (10%)
+ *     Parte difensiva  (20%): EM710 — obbligazioni governative euro 7-10 anni
+ *     Scudo Fiat       (10%): SGLN — Oro fisico, banda 7%–15%
+ *   Global 60/40
+ *     Azionario (60%): IUSQ — MSCI ACWI
+ *     Obbligazionario (40%): EM710
+ *   In both, XEON is Vault A: emergency fund, outside every balance.
  *
  * Sensors:
  *   B. Euphoria Sensor — taglia eccedenza azionaria quando peso ≥ 78%
@@ -31,13 +35,37 @@ function athKey(portfolioId) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────
-export const EQUITY_TARGET = 0.70
-export const DEFENSIVE_TARGET = 0.20      // Bond (EM710) or Cash (XEON in Global)
-export const GOLD_TARGET = 0.10
+// Targets are NOT fixed numbers any more: each portfolio has its own (Bilanciere
+// 70/20/10, Global 60/40), read from target_weight in tickers.json. Only the
+// margins around them are fixed. They reproduce the original numbers exactly for
+// a 70/20/10 portfolio: euphoria at 70+8 = 78%, gold band 10−3 … 10+5 = 7–15%.
+export const EUPHORIA_MARGIN = 0.08       // Peso equity ≥ target + 8pp → taglia
+export const GOLD_BAND_BELOW = 0.03       // Peso oro ≤ target − 3pp → ci pensa il PAC
+export const GOLD_BAND_ABOVE = 0.05       // Peso oro ≥ target + 5pp → vendi l'eccesso
 
-export const EUPHORIA_THRESHOLD = 0.78    // Peso equity ≥ 78% → taglia (+8pp dal target 70%)
-export const GOLD_LOWER_BAND = 0.07       // Peso oro ≤ 7% → compra
-export const GOLD_UPPER_BAND = 0.15       // Peso oro ≥ 15% → vendi
+// Sums of floats drift (0.35 + 0.28 + 0.07 = 0.7000000000000001): round to 4
+// decimals so a weight of exactly 78% is not judged "below" 77.99999…%.
+const round4 = (x) => Math.round(x * 1e4) / 1e4
+
+/**
+ * Per-portfolio targets, from the target weights of the Vault B ETFs.
+ * Legacy ETFs (target 0) add nothing, so a phased-out asset never creates a
+ * target of its own.
+ */
+export function computeTargets(vaultB) {
+  const sum = (match) => vaultB.filter(match).reduce((s, t) => s + (t.target_weight || 0), 0)
+  const equity = round4(sum(t => t.category === 'Equity'))
+  const defensive = round4(sum(t => t.category === 'Bond' || t.category === 'Cash'))
+  const gold = round4(sum(t => t.category === 'Commodity'))
+  return {
+    equity,
+    defensive,
+    gold,
+    euphoriaThreshold: round4(equity + EUPHORIA_MARGIN),
+    goldLower: round4(gold - GOLD_BAND_BELOW),
+    goldUpper: round4(gold + GOLD_BAND_ABOVE),
+  }
+}
 
 // Equity drawdown (from its all-time high) at which the market counts as
 // "in a crash": internal equity rebalancing pauses, and excess gold goes to
@@ -112,7 +140,10 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
   const vaultB = tickers.filter(t => t.vault === 'B')
   const equityETFs = vaultB.filter(t => t.category === 'Equity')
   const defensiveETF = findDefensiveETF(vaultB)
-  const goldETF = vaultB.find(t => t.category === 'Commodity')
+  // Same rule as the defensive ETF: only gold with a real target is "the gold
+  // block". Gold kept as legacy (Global, target 0) must not trigger the shield.
+  const goldETF = vaultB.find(t => t.category === 'Commodity' && t.target_weight > 0)
+  const targets = computeTargets(vaultB)
 
   // ── Total portfolio value (Vault B only for rebalancing) ──
   const totalValue = vaultB.reduce((sum, t) => {
@@ -172,6 +203,7 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
     equityInternals,
     defensiveETF,
     prices,
+    targets,
   })
 
   // ── Sensor C: Internal Maintenance ──
@@ -179,6 +211,7 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
     equityInternals,
     equityDrawdown,
     equityWeight,
+    targets,
   })
 
   // ── Sensor D: Gold Shield ──
@@ -191,12 +224,14 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
     equityDrawdown,
     equityInternals,
     prices,
+    targets,
   })
 
   // ── Time window check (15:30–16:30 CET) ──
   const timeWindow = checkTimeWindow()
 
   return {
+    targets,
     totalValue,
     equityValue,
     equityWeight,
@@ -218,13 +253,13 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
 
 // ─── Sensor B: Euphoria ─────────────────────────────────────────────
 
-function computeEuphoriaSignal({ equityWeight, equityValue, totalValue, equityInternals, defensiveETF, prices }) {
-  const isTriggered = equityWeight >= EUPHORIA_THRESHOLD
+function computeEuphoriaSignal({ equityWeight, equityValue, totalValue, equityInternals, defensiveETF, prices, targets }) {
+  const isTriggered = targets.equity > 0 && equityWeight >= targets.euphoriaThreshold
   const orders = []
 
   if (isTriggered && totalValue > 0) {
     // Excess to sell: bring equity back to 60%
-    const targetEquityValue = totalValue * EQUITY_TARGET
+    const targetEquityValue = totalValue * targets.equity
     const excess = equityValue - targetEquityValue
 
     if (excess > 0) {
@@ -240,7 +275,7 @@ function computeEuphoriaSignal({ equityWeight, equityValue, totalValue, equityIn
           name: mostOverweight.name,
           shares: sharesToSell,
           amount: sharesToSell * mostOverweight.price,
-          reason: `Decapitazione eccedenza (${mostOverweight.ticker.replace('.MI', '').replace('.PA', '').replace('.L', '')} più sovrappesato)`,
+          reason: `Decapitazione eccedenza (${shortTicker(mostOverweight.ticker)} più sovrappesato)`,
         })
 
         // The proceeds go to the defensive ETF: plain rebalancing from the
@@ -263,18 +298,18 @@ function computeEuphoriaSignal({ equityWeight, equityValue, totalValue, equityIn
   return {
     isTriggered,
     equityWeight,
-    threshold: EUPHORIA_THRESHOLD,
-    excess: isTriggered ? equityValue - totalValue * EQUITY_TARGET : 0,
+    threshold: targets.euphoriaThreshold,
+    excess: isTriggered ? equityValue - totalValue * targets.equity : 0,
     orders,
   }
 }
 
 // ─── Sensor C: Internal Maintenance ─────────────────────────────────
 
-function computeInternalMaintenance({ equityInternals, equityDrawdown, equityWeight }) {
+function computeInternalMaintenance({ equityInternals, equityDrawdown, equityWeight, targets }) {
   // Only if no drawdown or euphoria triggers are active
   const drawdownActive = equityDrawdown <= DRAWDOWN_ALERT
-  const euphoriaActive = equityWeight >= EUPHORIA_THRESHOLD
+  const euphoriaActive = equityWeight >= targets.euphoriaThreshold
 
   if (drawdownActive || euphoriaActive) {
     return { needsRebalance: false, drifts: equityInternals, orders: [] }
@@ -323,9 +358,9 @@ function computeInternalMaintenance({ equityInternals, equityDrawdown, equityWei
 
 // ─── Sensor D: Gold Shield ──────────────────────────────────────────
 
-function computeGoldSignal({ goldWeight, goldValue, totalValue, goldETF, defensiveETF, equityDrawdown, equityInternals, prices }) {
-  const isLow = goldWeight <= GOLD_LOWER_BAND && goldWeight > 0
-  const isHigh = goldWeight >= GOLD_UPPER_BAND
+function computeGoldSignal({ goldWeight, goldValue, totalValue, goldETF, defensiveETF, equityDrawdown, equityInternals, prices, targets }) {
+  const isLow = goldWeight <= targets.goldLower && goldWeight > 0
+  const isHigh = goldWeight >= targets.goldUpper
   const orders = []
 
   if (!goldETF) return { isLow: false, isHigh: false, handledByPac: false, goldWeight, orders }
@@ -339,7 +374,7 @@ function computeGoldSignal({ goldWeight, goldValue, totalValue, goldETF, defensi
 
   if (isHigh && totalValue > 0) {
     // Sell gold excess
-    const targetGoldValue = totalValue * GOLD_TARGET
+    const targetGoldValue = totalValue * targets.gold
     const excess = goldValue - targetGoldValue
     const goldPrice = prices[goldETF.ticker] || 0
 
