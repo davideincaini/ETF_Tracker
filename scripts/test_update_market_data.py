@@ -225,11 +225,32 @@ class EndToEndTests(unittest.TestCase):
         fetch = fake_fetcher({"AAA.MI": synthetic_payload(10.0)})
         self.assertEqual(umd.run(["AAA.MI"], self.data_dir, NOW, fetch, pause_s=0), 0)
 
-    def test_only_if_missing_skips_when_data_exists(self):
-        (self.data_dir / "prices.json").write_text("{}")
-        code = umd.main(["--data-dir", str(self.data_dir), "--only-if-missing"])
+    def _tickers_file(self, names):
+        path = self.data_dir / "tickers.json"
+        path.write_text(json.dumps([{"ticker": n} for n in names]))
+        return path
+
+    def test_only_if_missing_skips_when_every_ticker_has_data(self):
+        fetch = fake_fetcher({"AAA.MI": synthetic_payload(10.0)})
+        umd.run(["AAA.MI"], self.data_dir, NOW, fetch, pause_s=0)
+        before = (self.data_dir / "prices.json").read_text()
+
+        def no_network(url, params):
+            raise AssertionError("must not fetch when nothing is missing")
+        code = umd.main(["--data-dir", str(self.data_dir), "--only-if-missing",
+                         "--tickers-file", str(self._tickers_file(["AAA.MI"]))], fetch=no_network)
         self.assertEqual(code, 0)
-        self.assertEqual((self.data_dir / "prices.json").read_text(), "{}")
+        self.assertEqual((self.data_dir / "prices.json").read_text(), before)
+
+    def test_only_if_missing_fetches_a_newly_added_ticker(self):
+        # Mirrors replacing C3M with EM710: the data file exists, the new ETF is not in it
+        umd.run(["AAA.MI"], self.data_dir, NOW,
+                fake_fetcher({"AAA.MI": synthetic_payload(10.0)}), pause_s=0)
+        fetch = fake_fetcher({"AAA.MI": synthetic_payload(10.0), "NEW.MI": synthetic_payload(164.0)})
+        code = umd.main(["--data-dir", str(self.data_dir), "--only-if-missing",
+                         "--tickers-file", str(self._tickers_file(["AAA.MI", "NEW.MI"]))], fetch=fetch)
+        self.assertEqual(code, 0)
+        self.assertEqual(self.read("prices.json")["tickers"]["NEW.MI"]["price"], 164.0)
 
     def test_tickers_are_deduplicated(self):
         tickers_file = self.data_dir / "tickers.json"

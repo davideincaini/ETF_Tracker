@@ -68,8 +68,9 @@ jobs:
           ACCEPT_JUMPS: ${{ inputs.accept_jumps }}
         run: |
           args=""
-          # On a code push we only fetch if the data files don't exist yet
-          # (first deploy). Otherwise every push would add a bot commit.
+          # On a code push we only fetch if some ticker in tickers.json has no
+          # data yet (first deploy, or an ETF just added). Otherwise every push
+          # would add a bot commit.
           if [ "$EVENT" = "push" ]; then args="--only-if-missing"; fi
           if [ "$ACCEPT_JUMPS" = "true" ]; then args="$args --accept-jumps"; fi
           python3 scripts/update_market_data.py $args

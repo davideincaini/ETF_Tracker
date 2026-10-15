@@ -30,7 +30,7 @@ DESIGN PRINCIPLES (the "why" behind the choices below)
 USAGE
 -----
     python3 scripts/update_market_data.py                 # normal run
-    python3 scripts/update_market_data.py --only-if-missing   # bootstrap only
+    python3 scripts/update_market_data.py --only-if-missing   # only if a ticker has no data
     python3 scripts/update_market_data.py --accept-jumps      # after a split
 """
 
@@ -500,23 +500,32 @@ def run(tickers: list[str], data_dir: Path, now: datetime, fetch: Fetcher,
     return 1 if degraded else 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: Optional[list[str]] = None, fetch: Fetcher = fetch_json) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--tickers-file", type=Path, default=DEFAULT_TICKERS_FILE)
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     parser.add_argument("--accept-jumps", action="store_true",
                         help="skip the large-move check (use once after a split)")
     parser.add_argument("--only-if-missing", action="store_true",
-                        help="do nothing if prices.json already exists (bootstrap)")
+                        help="fetch only if some configured ticker has no data yet")
     args = parser.parse_args(argv)
 
-    if args.only_if_missing and (args.data_dir / "prices.json").exists():
-        print("prices.json already present: bootstrap not needed.")
-        return 0
-
     tickers = load_tickers(args.tickers_file)
+
+    # Used on every code push. Without new tickers there is nothing to do (the
+    # daily schedule keeps prices fresh). But if you add an ETF to tickers.json,
+    # its data is fetched right away instead of at the next scheduled run, so
+    # the app never shows a freshly added ETF without a price for hours.
+    if args.only_if_missing:
+        known = load_previous(args.data_dir / "prices.json")
+        missing = [t for t in tickers if t not in known]
+        if not missing:
+            print("Every configured ticker already has data: nothing to bootstrap.")
+            return 0
+        print(f"No data yet for: {', '.join(missing)} -> running a full update.")
+
     print(f"Updating {len(tickers)} tickers: {', '.join(tickers)}")
-    return run(tickers, args.data_dir, utc_now(), fetch_json, args.accept_jumps)
+    return run(tickers, args.data_dir, utc_now(), fetch, args.accept_jumps)
 
 
 if __name__ == "__main__":

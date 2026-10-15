@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { calculatePac } from '../utils/pac'
+import { calculatePac, pacTickers as selectPacTickers } from '../utils/pac'
 import { ShoppingCart, Check, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { formatPriceDate, cleanTicker } from '../utils/priceStatus'
 
@@ -28,8 +28,9 @@ export default function PacCalculator({
   const [overrides, setOverrides] = useState({})
   const [pricesOpen, setPricesOpen] = useState(false)
 
-  // Only vault B ETFs take part in the PAC (same filter as utils/pac.js)
-  const pacTickers = useMemo(() => tickers.filter((t) => t.vault === 'B'), [tickers])
+  // Same selection as the algorithm (utils/pac.js), so every ETF the algorithm
+  // needs a price for has a row here, and no irrelevant ETF does.
+  const pacTickers = useMemo(() => selectPacTickers(tickers, holdings), [tickers, holdings])
 
   // One row per ETF: where its price comes from and whether to trust it.
   const rows = pacTickers.map((t) => {

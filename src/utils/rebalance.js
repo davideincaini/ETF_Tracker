@@ -1,16 +1,25 @@
 /**
- * Antifragile Rebalancing Engine — "Bilanciere 70/20/10"
+ * Rebalancing Engine — "Bilanciere 70/20/10"
  *
  * Architecture:
  *   Motore Azionario (70%): XDPU (50%), EXUS (40%), EIMI (10%)
- *   Bunker Liquidità (20%): C3M — 3 "proiettili" da ~6.67% ciascuno
- *   Scudo Fiat (10%): SGLN — Oro fisico, bande ampie (7%–15%)
+ *   Parte difensiva  (20%): EM710 — obbligazioni governative euro 7-10 anni
+ *                           (nel portafoglio Global: XEON)
+ *   Scudo Fiat       (10%): SGLN — Oro fisico, bande ampie (7%–15%)
  *
  * Sensors:
- *   A. Drawdown Sensor — sblocca liquidità C3M durante crolli azionari
  *   B. Euphoria Sensor — taglia eccedenza azionaria quando peso ≥ 78%
  *   C. Internal Maintenance — ribilanciamento a somma zero tra equity ETFs
  *   D. Gold Shield — bande 7%–15% per SGLN
+ *
+ * Removed in October 2026: the "A. Drawdown Sensor", which sold a cash bunker
+ * (C3M) in three "bullets" during equity crashes. The defensive 20% is now a
+ * 7-10Y government bond ETF, which can itself be down ~20% when it would be
+ * sold (EM710 lost 19.5% in 2022), so spending it as dry powder no longer made
+ * sense. Letters B–D are kept so old notes still match.
+ *
+ * The equity drawdown is still MEASURED (from the equity ATH) because sensors
+ * C and D use it as a condition: see DRAWDOWN_ALERT below.
  */
 
 const ATH_STORAGE_PREFIX = 'antigravity_equity_ath'
@@ -22,18 +31,29 @@ function athKey(portfolioId) {
 
 // ─── Constants ───────────────────────────────────────────────────────
 export const EQUITY_TARGET = 0.70
-export const CASH_TARGET = 0.20
+export const DEFENSIVE_TARGET = 0.20      // Bond (EM710) or Cash (XEON in Global)
 export const GOLD_TARGET = 0.10
 
 export const EUPHORIA_THRESHOLD = 0.78    // Peso equity ≥ 78% → taglia (+8pp dal target 70%)
 export const GOLD_LOWER_BAND = 0.07       // Peso oro ≤ 7% → compra
 export const GOLD_UPPER_BAND = 0.15       // Peso oro ≥ 15% → vendi
 
-export const DRAWDOWN_TRIGGERS = [
-  { level: 1, threshold: -0.15, label: '1° Proiettile', pctOfTotal: CASH_TARGET / 3 },
-  { level: 2, threshold: -0.25, label: '2° Proiettile', pctOfTotal: CASH_TARGET / 3 },
-  { level: 3, threshold: -0.40, label: '3° Proiettile', pctOfTotal: CASH_TARGET / 3 },
-]
+// Equity drawdown (from its all-time high) at which the market counts as
+// "in a crash": internal equity rebalancing pauses, and excess gold goes to
+// equity instead of the defensive ETF. Same value the first bullet used (−15%).
+export const DRAWDOWN_ALERT = -0.15
+
+/**
+ * The defensive ETF is the Bond or Cash ETF that has a real target weight.
+ * The target filter matters: a "legacy" ETF kept only because you may still
+ * hold it (C3M, target 0) must never be picked as the destination of new money.
+ */
+function findDefensiveETF(vaultB) {
+  return vaultB.find(t => (t.category === 'Bond' || t.category === 'Cash') && t.target_weight > 0)
+}
+
+/** "EM710.MI" -> "EM710", for order descriptions */
+const shortTicker = (ticker) => ticker.split('.')[0]
 
 // ─── ATH Tracking ────────────────────────────────────────────────────
 export function loadEquityATH(portfolioId) {
@@ -90,7 +110,7 @@ export function calculatePerAssetATH(history, prices) {
 export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
   const vaultB = tickers.filter(t => t.vault === 'B')
   const equityETFs = vaultB.filter(t => t.category === 'Equity')
-  const cashETF = vaultB.find(t => t.category === 'Cash')
+  const defensiveETF = findDefensiveETF(vaultB)
   const goldETF = vaultB.find(t => t.category === 'Commodity')
 
   // ── Total portfolio value (Vault B only for rebalancing) ──
@@ -104,9 +124,9 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
   }, 0)
   const equityWeight = totalValue > 0 ? equityValue / totalValue : 0
 
-  // ── Cash block ──
-  const cashValue = cashETF ? (holdings[cashETF.ticker] || 0) * (prices[cashETF.ticker] || 0) : 0
-  const cashWeight = totalValue > 0 ? cashValue / totalValue : 0
+  // ── Defensive block (bond or cash ETF) ──
+  const defensiveValue = defensiveETF ? (holdings[defensiveETF.ticker] || 0) * (prices[defensiveETF.ticker] || 0) : 0
+  const defensiveWeight = totalValue > 0 ? defensiveValue / totalValue : 0
 
   // ── Gold block ──
   const goldValue = goldETF ? (holdings[goldETF.ticker] || 0) * (prices[goldETF.ticker] || 0) : 0
@@ -143,23 +163,13 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
     }
   })
 
-  // ── Sensor A: Drawdown (sblocco liquidità) ──
-  const drawdownSignals = computeDrawdownSignals({
-    equityDrawdown,
-    cashValue,
-    totalValue,
-    equityInternals,
-    prices,
-    cashETF,
-  })
-
   // ── Sensor B: Euphoria (taglio eccedenza) ──
   const euphoriaSignal = computeEuphoriaSignal({
     equityWeight,
     equityValue,
     totalValue,
     equityInternals,
-    cashETF,
+    defensiveETF,
     prices,
   })
 
@@ -176,7 +186,7 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
     goldValue,
     totalValue,
     goldETF,
-    cashETF,
+    defensiveETF,
     equityDrawdown,
     equityInternals,
     prices,
@@ -192,12 +202,12 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
     equityATH,
     equityATHDate,
     equityDrawdown,
-    cashValue,
-    cashWeight,
+    defensiveETF,
+    defensiveValue,
+    defensiveWeight,
     goldValue,
     goldWeight,
     equityInternals,
-    drawdownSignals,
     euphoriaSignal,
     internalSignal,
     goldSignal,
@@ -205,103 +215,9 @@ export function analyzePortfolio({ tickers, holdings, prices, portfolioId }) {
   }
 }
 
-// ─── Sensor A: Drawdown ─────────────────────────────────────────────
-
-function computeDrawdownSignals({ equityDrawdown, cashValue, totalValue, equityInternals, prices, cashETF }) {
-  const bulletSize = totalValue * (CASH_TARGET / 3)  // Each bullet = 1/3 of C3M (≈6.67% of total)
-  const bulletsAvailable = cashValue > 0 ? Math.min(3, Math.floor(cashValue / bulletSize + 0.5)) : 0
-
-  const triggered = DRAWDOWN_TRIGGERS.filter(t => equityDrawdown <= t.threshold)
-  const activeLevel = triggered.length
-
-  // How many bullets to fire
-  const bulletsToFire = Math.min(activeLevel, bulletsAvailable)
-
-  const orders = []
-  const buyBreakdown = [] // Per-ETF detail of how the bullet is distributed
-
-  if (bulletsToFire > 0 && cashETF) {
-    const amountToInject = bulletSize * bulletsToFire
-
-    // Find ETFs below their internal target (negative drift = underweight)
-    const underweightETFs = equityInternals.filter(e => e.drift < 0)
-
-    // Distribution: proportional to each ETF's deficit (absolute drift)
-    // If no ETF is underweight (unlikely during drawdown), distribute by target weight
-    let recipients = []
-    if (underweightETFs.length > 0) {
-      const totalDeficit = underweightETFs.reduce((s, e) => s + Math.abs(e.drift), 0)
-      recipients = underweightETFs.map(e => ({
-        ...e,
-        share: Math.abs(e.drift) / totalDeficit,
-      }))
-    } else {
-      // Fallback: distribute to all equity ETFs by internal target
-      const totalTarget = equityInternals.reduce((s, e) => s + e.internalTarget, 0)
-      recipients = equityInternals.map(e => ({
-        ...e,
-        share: totalTarget > 0 ? e.internalTarget / totalTarget : 1 / equityInternals.length,
-      }))
-    }
-
-    let totalBuyAmount = 0
-    for (const r of recipients) {
-      const allocation = amountToInject * r.share
-      const shares = Math.floor(allocation / r.price)
-      if (shares > 0) {
-        const amount = shares * r.price
-        totalBuyAmount += amount
-        orders.push({
-          type: 'buy',
-          ticker: r.ticker,
-          name: r.name,
-          shares,
-          amount,
-          reason: `Quota proiettile (${(r.share * 100).toFixed(0)}% — deficit ${(r.drift * 100).toFixed(1)}%)`,
-        })
-        buyBreakdown.push({
-          ticker: r.ticker,
-          name: r.name,
-          shares,
-          amount,
-          share: r.share,
-          drift: r.drift,
-          internalWeight: r.internalWeight,
-          internalTarget: r.internalTarget,
-        })
-      }
-    }
-
-    // Single sell order for C3M covering the total injection
-    if (totalBuyAmount > 0) {
-      const sharesToSellCash = Math.ceil(totalBuyAmount / (prices[cashETF.ticker] || 1))
-      orders.unshift({
-        type: 'sell',
-        ticker: cashETF.ticker,
-        shares: sharesToSellCash,
-        amount: totalBuyAmount,
-        reason: `Sblocco ${bulletsToFire} proiettile/i — distribuito su ${buyBreakdown.length} ETF`,
-      })
-    }
-  }
-
-  return {
-    equityDrawdown,
-    activeLevel,
-    bulletsAvailable,
-    bulletsToFire,
-    buyBreakdown,
-    orders,
-    triggers: DRAWDOWN_TRIGGERS.map(t => ({
-      ...t,
-      active: equityDrawdown <= t.threshold,
-    })),
-  }
-}
-
 // ─── Sensor B: Euphoria ─────────────────────────────────────────────
 
-function computeEuphoriaSignal({ equityWeight, equityValue, totalValue, equityInternals, cashETF, prices }) {
+function computeEuphoriaSignal({ equityWeight, equityValue, totalValue, equityInternals, defensiveETF, prices }) {
   const isTriggered = equityWeight >= EUPHORIA_THRESHOLD
   const orders = []
 
@@ -326,14 +242,17 @@ function computeEuphoriaSignal({ equityWeight, equityValue, totalValue, equityIn
           reason: `Decapitazione eccedenza (${mostOverweight.ticker.replace('.MI', '').replace('.PA', '').replace('.L', '')} più sovrappesato)`,
         })
 
-        if (cashETF) {
-          const sharesToBuyCash = Math.floor(excess / (prices[cashETF.ticker] || 1))
+        // The proceeds go to the defensive ETF: plain rebalancing from the
+        // asset that ran up into the one that lagged behind.
+        if (defensiveETF) {
+          const sharesToBuyDefensive = Math.floor(excess / (prices[defensiveETF.ticker] || 1))
           orders.push({
             type: 'buy',
-            ticker: cashETF.ticker,
-            shares: sharesToBuyCash,
-            amount: sharesToBuyCash * (prices[cashETF.ticker] || 0),
-            reason: 'Ricarica polveriera C3M',
+            ticker: defensiveETF.ticker,
+            name: defensiveETF.name,
+            shares: sharesToBuyDefensive,
+            amount: sharesToBuyDefensive * (prices[defensiveETF.ticker] || 0),
+            reason: `Riallocazione in ${shortTicker(defensiveETF.ticker)}`,
           })
         }
       }
@@ -353,7 +272,7 @@ function computeEuphoriaSignal({ equityWeight, equityValue, totalValue, equityIn
 
 function computeInternalMaintenance({ equityInternals, equityDrawdown, equityWeight }) {
   // Only if no drawdown or euphoria triggers are active
-  const drawdownActive = equityDrawdown <= DRAWDOWN_TRIGGERS[0].threshold
+  const drawdownActive = equityDrawdown <= DRAWDOWN_ALERT
   const euphoriaActive = equityWeight >= EUPHORIA_THRESHOLD
 
   if (drawdownActive || euphoriaActive) {
@@ -403,30 +322,31 @@ function computeInternalMaintenance({ equityInternals, equityDrawdown, equityWei
 
 // ─── Sensor D: Gold Shield ──────────────────────────────────────────
 
-function computeGoldSignal({ goldWeight, goldValue, totalValue, goldETF, cashETF, equityDrawdown, equityInternals, prices }) {
+function computeGoldSignal({ goldWeight, goldValue, totalValue, goldETF, defensiveETF, equityDrawdown, equityInternals, prices }) {
   const isLow = goldWeight <= GOLD_LOWER_BAND && goldWeight > 0
   const isHigh = goldWeight >= GOLD_UPPER_BAND
   const orders = []
 
   if (!goldETF) return { isLow: false, isHigh: false, goldWeight, orders }
 
-  if (isLow && cashETF && totalValue > 0) {
-    // Buy gold from cash to bring back to 10%
+  if (isLow && defensiveETF && totalValue > 0) {
+    // Fund the gold top-up by selling part of the defensive ETF, back to 10%
     const targetGoldValue = totalValue * GOLD_TARGET
     const deficit = targetGoldValue - goldValue
     const goldPrice = prices[goldETF.ticker] || 0
 
     if (deficit > 0 && goldPrice > 0) {
       const sharesToBuy = Math.floor(deficit / goldPrice)
-      const cashSharestoSell = Math.ceil(deficit / (prices[cashETF.ticker] || 1))
+      const defensiveSharesToSell = Math.ceil(deficit / (prices[defensiveETF.ticker] || 1))
 
       if (sharesToBuy > 0) {
         orders.push({
           type: 'sell',
-          ticker: cashETF.ticker,
-          shares: cashSharestoSell,
+          ticker: defensiveETF.ticker,
+          name: defensiveETF.name,
+          shares: defensiveSharesToSell,
           amount: deficit,
-          reason: 'Prelievo da C3M per Scudo Oro',
+          reason: `Prelievo da ${shortTicker(defensiveETF.ticker)} per Scudo Oro`,
         })
         orders.push({
           type: 'buy',
@@ -456,8 +376,8 @@ function computeGoldSignal({ goldWeight, goldValue, totalValue, goldETF, cashETF
         reason: 'Decapitazione eccedenza Oro',
       })
 
-      // Destination: cash, unless equity is also in drawdown
-      const equityInDrawdown = equityDrawdown <= DRAWDOWN_TRIGGERS[0].threshold
+      // Destination: the defensive ETF, unless equity is in a crash
+      const equityInDrawdown = equityDrawdown <= DRAWDOWN_ALERT
       if (equityInDrawdown) {
         const mostUnderweight = [...equityInternals].sort((a, b) => a.drift - b.drift)[0]
         if (mostUnderweight && mostUnderweight.price > 0) {
@@ -470,13 +390,14 @@ function computeGoldSignal({ goldWeight, goldValue, totalValue, goldETF, cashETF
             reason: `Iniezione in azionario (drawdown attivo)`,
           })
         }
-      } else if (cashETF) {
+      } else if (defensiveETF) {
         orders.push({
           type: 'buy',
-          ticker: cashETF.ticker,
-          shares: Math.floor(excess / (prices[cashETF.ticker] || 1)),
+          ticker: defensiveETF.ticker,
+          name: defensiveETF.name,
+          shares: Math.floor(excess / (prices[defensiveETF.ticker] || 1)),
           amount: excess,
-          reason: 'Ricarica polveriera C3M',
+          reason: `Riallocazione in ${shortTicker(defensiveETF.ticker)}`,
         })
       }
     }

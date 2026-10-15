@@ -31,9 +31,14 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
   const allocTickers = tickers.filter((t) => t.category !== 'Liquidity' && t.vault === 'B')
 
   // Calculate Cash / Equity / Commodity percentage based on Vault B only
-  const cashPct = allocTickers
-    .filter((t) => t.category === 'Cash' || t.category === 'Bond')
-    .reduce((s, t) => s + (vaultBWeights[t.ticker] || 0), 0)
+  const defensiveTickers = allocTickers.filter((t) => t.category === 'Cash' || t.category === 'Bond')
+  const cashPct = defensiveTickers.reduce((s, t) => s + (vaultBWeights[t.ticker] || 0), 0)
+  // Label the defensive pill by what it really contains: the categories that are
+  // either targeted or still held (e.g. "Bond + Cash" while old C3M shares remain).
+  const defensiveCategories = [...new Set(defensiveTickers
+    .filter((t) => t.target_weight > 0 || (vaultBWeights[t.ticker] || 0) > 0)
+    .map((t) => t.category))].sort()
+  const defensiveLabel = defensiveCategories.length ? defensiveCategories.join(' + ') : 'Cash'
   const equityPct = allocTickers
     .filter((t) => t.category === 'Equity')
     .reduce((s, t) => s + (vaultBWeights[t.ticker] || 0), 0)
@@ -98,7 +103,7 @@ export default function Dashboard({ tickers, holdings, transactions, prices, loa
           style={{ background: '#EDE7F6', color: '#5856D6' }}
         >
           <Shield size={13} />
-          Cash {vaultBTotal > 0 ? (normalizedCashPct * 100).toFixed(0) : 20}%
+          {defensiveLabel} {vaultBTotal > 0 ? (normalizedCashPct * 100).toFixed(0) : 20}%
         </div>
         <div
           className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-2xl"
