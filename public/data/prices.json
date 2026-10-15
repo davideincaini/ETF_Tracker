@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "generated_at": "2026-10-15T09:04:56Z",
+  "source": "Yahoo Finance chart API (via GitHub Actions)",
+  "tickers": {
+    "C3M.PA": {
+      "price": 127.44,
+      "currency": "EUR",
+      "market_time": "2026-10-15T07:04:05Z",
+      "fetched_at": "2026-10-15T09:04:56Z",
+      "status": "ok"
+    },
+    "EIMI.MI": {
+      "price": 46.37,
+      "currency": "EUR",
+      "market_time": "2026-10-15T08:49:49Z",
+      "fetched_at": "2026-10-15T09:04:56Z",
+      "status": "ok"
+    },
+    "EM710.MI": {
+      "price": 164.21,
+      "currency": "EUR",
+      "market_time": "2026-10-15T08:43:29Z",
+      "fetched_at": "2026-10-15T09:04:56Z",
+      "status": "ok"
+    },
+    "EXUS.MI": {
+      "price": 39.915,
+      "currency": "EUR",
+      "market_time": "2026-10-15T08:46:19Z",
+      "fetched_at": "2026-10-15T09:04:56Z",
+      "status": "ok"
+    },
+    "IUSQ.DE": {
+      "price": 108.88,
+      "currency": "EUR",
+      "market_time": "2026-10-15T08:49:23Z",
+      "fetched_at": "2026-10-15T09:04:56Z",
+      "status": "ok"
+    },
+    "SGLN.MI": {
+      "price": 71.81,
+      "currency": "EUR",
+      "market_time": "2026-10-15T08:49:44Z",
+      "fetched_at": "2026-10-15T09:04:56Z",
+      "status": "ok"
+    },
+    "XDPU.MI": {
+      "price": 13.328,
+      "currency": "EUR",
+      "market_time": "2026-10-15T08:43:57Z",
+      "fetched_at": "2026-10-15T09:04:56Z",
+      "status": "ok"
+    },
+    "XEON.MI": {
+      "price": 150.5005,
+      "currency": "EUR",
+      "market_time": "2026-10-15T08:49:50Z",
+      "fetched_at": "2026-10-15T09:04:56Z",
+      "status": "ok"
+    }
+  }
+}
