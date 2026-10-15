@@ -1,82 +1,9 @@
 import { useState, useMemo } from 'react'
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Clock, TrendingDown, TrendingUp, Shield, Crosshair, Zap, Scale, Gem } from 'lucide-react'
-import { analyzePortfolio, DRAWDOWN_TRIGGERS, EUPHORIA_THRESHOLD, GOLD_LOWER_BAND, GOLD_UPPER_BAND, EQUITY_TARGET, CASH_TARGET, GOLD_TARGET } from '../utils/rebalance'
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Clock, TrendingDown, TrendingUp, Shield, Zap, Scale, Gem } from 'lucide-react'
+import { analyzePortfolio, EUPHORIA_THRESHOLD, GOLD_LOWER_BAND, GOLD_UPPER_BAND, EQUITY_TARGET, DEFENSIVE_TARGET, GOLD_TARGET, DRAWDOWN_ALERT } from '../utils/rebalance'
 
 function cleanTicker(ticker) {
   return ticker.replace('.MI', '').replace('.PA', '').replace('.L', '')
-}
-
-// ─── Drawdown Gauge (visual semicircle) ──────────────────────────────
-function DrawdownGauge({ drawdownPct }) {
-  const pct = Math.abs(drawdownPct * 100)
-  const maxPct = 50
-  const ratio = Math.min(pct / maxPct, 1)
-  const angle = -90 + ratio * 180
-  const color = pct < 15 ? '#34C759' : pct < 25 ? '#FF9500' : '#FF3B30'
-
-  return (
-    <div className="flex flex-col items-center">
-      <svg width="120" height="70" viewBox="0 0 120 70">
-        {/* Background arc */}
-        <path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="#E5E5EA" strokeWidth="8" strokeLinecap="round" />
-        {/* Trigger marks */}
-        {DRAWDOWN_TRIGGERS.map((t, i) => {
-          const trigAngle = -90 + (Math.abs(t.threshold) / 0.5) * 180
-          const rad = (trigAngle * Math.PI) / 180
-          const x = 60 + 50 * Math.cos(rad)
-          const y = 65 + 50 * Math.sin(rad)
-          return <circle key={i} cx={x} cy={y} r="3" fill={drawdownPct <= t.threshold ? '#FF3B30' : '#C7C7CC'} />
-        })}
-        {/* Needle */}
-        {pct > 0 && (
-          <line
-            x1="60" y1="65"
-            x2={60 + 40 * Math.cos((angle * Math.PI) / 180)}
-            y2={65 + 40 * Math.sin((angle * Math.PI) / 180)}
-            stroke={color} strokeWidth="3" strokeLinecap="round"
-          />
-        )}
-        <circle cx="60" cy="65" r="4" fill={color} />
-      </svg>
-      <p className="text-lg font-black mt-1" style={{ color }}>
-        {drawdownPct === 0 ? '0.0' : (drawdownPct * 100).toFixed(1)}%
-      </p>
-      <p className="text-[10px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-        dal massimo equity
-      </p>
-    </div>
-  )
-}
-
-// ─── Bullet Indicator ────────────────────────────────────────────────
-function BulletIndicator({ level, active, available, threshold }) {
-  const fired = active
-  const canFire = available
-  return (
-    <div className="flex items-center gap-2 p-2.5 rounded-xl" style={{
-      background: fired ? '#FFE5E5' : canFire ? '#FFF9E6' : 'var(--bg)',
-      border: fired ? '1px solid #FF3B30' : '1px solid transparent'
-    }}>
-      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black"
-        style={{ background: fired ? '#FF3B30' : canFire ? '#FF9500' : '#C7C7CC' }}>
-        {level}
-      </div>
-      <div className="flex-1">
-        <p className="text-[11px] font-bold" style={{ color: fired ? '#D70015' : 'var(--text-primary)' }}>
-          Proiettile {level}
-        </p>
-        <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
-          Soglia: {(threshold * 100).toFixed(0)}%
-        </p>
-      </div>
-      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{
-        background: fired ? '#FF3B30' : canFire ? '#FF9500' : '#E5E5EA',
-        color: fired || canFire ? '#fff' : '#8E8E93'
-      }}>
-        {fired ? 'FIRE' : canFire ? 'READY' : 'LOCKED'}
-      </span>
-    </div>
-  )
 }
 
 // ─── Order Card ──────────────────────────────────────────────────────
@@ -155,11 +82,20 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
 
   const {
     totalValue, equityValue, equityWeight, equityATH, equityDrawdown,
-    cashValue, cashWeight, goldValue, goldWeight,
-    equityInternals, drawdownSignals, euphoriaSignal, internalSignal, goldSignal, timeWindow
+    defensiveETF, defensiveWeight, goldValue, goldWeight,
+    equityInternals, euphoriaSignal, internalSignal, goldSignal, timeWindow
   } = analysis
 
-  const hasAnyAlert = drawdownSignals.activeLevel > 0 || euphoriaSignal.isTriggered ||
+  // "Bond" for EM710 (Bilanciere), "Cash" for XEON (Global): the label follows
+  // the ETF's real category instead of being hard-coded.
+  const defensiveLabel = defensiveETF?.category === 'Bond' ? 'Bond' : 'Cash'
+
+  // Vault B ETFs with target 0 that you still hold (e.g. C3M after the switch to EM710)
+  const legacyHeld = tickers.filter(t => t.vault === 'B' && !(t.target_weight > 0) && (holdings[t.ticker] || 0) > 0)
+  const legacyValue = legacyHeld.reduce((s, t) => s + (holdings[t.ticker] || 0) * (prices[t.ticker] || 0), 0)
+  const legacyWeight = totalValue > 0 ? legacyValue / totalValue : 0
+
+  const hasAnyAlert = euphoriaSignal.isTriggered ||
     (internalSignal.needsRebalance) || goldSignal.isLow || goldSignal.isHigh
 
   return (
@@ -195,9 +131,9 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
             <p className="text-[9px]" style={{ color: '#248A3D' }}>target {(EQUITY_TARGET * 100).toFixed(0)}%</p>
           </div>
           <div className="p-3 rounded-2xl text-center" style={{ background: '#EDE7F6' }}>
-            <p className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#5856D6' }}>Cash</p>
-            <p className="text-lg font-black" style={{ color: '#5856D6' }}>{(cashWeight * 100).toFixed(1)}%</p>
-            <p className="text-[9px]" style={{ color: '#7B7ADE' }}>target {(CASH_TARGET * 100).toFixed(0)}%</p>
+            <p className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#5856D6' }}>{defensiveLabel}</p>
+            <p className="text-lg font-black" style={{ color: '#5856D6' }}>{(defensiveWeight * 100).toFixed(1)}%</p>
+            <p className="text-[9px]" style={{ color: '#7B7ADE' }}>target {(DEFENSIVE_TARGET * 100).toFixed(0)}%</p>
           </div>
           <div className="p-3 rounded-2xl text-center" style={{ background: '#FFF4E5' }}>
             <p className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: '#FF9500' }}>Oro</p>
@@ -205,6 +141,14 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
             <p className="text-[9px]" style={{ color: '#C77700' }}>target {(GOLD_TARGET * 100).toFixed(0)}%</p>
           </div>
         </div>
+      )}
+
+      {/* ETFs being phased out (target 0) still count in the total: without this
+          line the three tiles would add up to less than 100% with no explanation. */}
+      {totalValue > 0 && legacyHeld.length > 0 && (
+        <p className="text-[11px] -mt-3 mb-5 px-1" style={{ color: 'var(--text-secondary)' }}>
+          Il restante {(legacyWeight * 100).toFixed(1)}% è in {legacyHeld.map(t => cleanTicker(t.ticker)).join(', ')}, in dismissione: conta nel totale ma non ha target e il PAC non lo compra più.
+        </p>
       )}
 
       {/* All Clear */}
@@ -223,66 +167,6 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
 
       {/* Sensors */}
       <div className="flex flex-col gap-4">
-        {/* Sensor A: Drawdown */}
-        <SensorSection
-          icon={Crosshair}
-          title="Drawdown Sensor"
-          subtitle={`Equity dal ATH: ${(equityDrawdown * 100).toFixed(1)}%`}
-          color="#FF3B30"
-          isActive={drawdownSignals.activeLevel > 0}
-          defaultOpen={drawdownSignals.activeLevel > 0}
-        >
-          <DrawdownGauge drawdownPct={equityDrawdown} />
-
-          {/* Bullets */}
-          <div className="flex flex-col gap-2 mt-4">
-            {drawdownSignals.triggers.map((t, i) => (
-              <BulletIndicator
-                key={i}
-                level={t.level}
-                active={t.active}
-                available={i < drawdownSignals.bulletsAvailable}
-                threshold={t.threshold}
-              />
-            ))}
-          </div>
-
-          {/* Buy breakdown per ETF */}
-          {drawdownSignals.buyBreakdown.length > 0 && (
-            <div className="mt-4">
-              <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Distribuzione proiettile per deficit
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {drawdownSignals.buyBreakdown.map((b, i) => (
-                  <div key={i} className="flex items-center justify-between p-2.5 rounded-xl" style={{ background: 'var(--bg)' }}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold">{cleanTicker(b.ticker)}</span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: '#FFE5E5', color: '#FF3B30' }}>
-                        drift {(b.drift * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-bold">{b.shares} quote</p>
-                      <p className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>
-                        ({(b.share * 100).toFixed(0)}% del bullet)
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Orders */}
-          {drawdownSignals.orders.length > 0 && (
-            <div className="mt-4 flex flex-col gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#D70015' }}>Ordini Suggeriti</p>
-              {drawdownSignals.orders.map((o, i) => <OrderCard key={i} order={o} />)}
-            </div>
-          )}
-        </SensorSection>
-
         {/* Sensor B: Euphoria */}
         <SensorSection
           icon={Zap}
@@ -400,6 +284,13 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
             </div>
           </div>
 
+          {/* Below the band there is nothing to sell: the monthly PAC fixes it */}
+          {goldSignal.handledByPac && (
+            <div className="p-3.5 rounded-2xl text-xs leading-snug" style={{ background: '#FFF4E5', color: '#A25F00' }}>
+              Oro sotto il {(GOLD_LOWER_BAND * 100).toFixed(0)}%: nessuna vendita necessaria. Il prossimo PAC indirizzerà i nuovi versamenti verso l'oro finché non torna vicino al {(GOLD_TARGET * 100).toFixed(0)}%.
+            </div>
+          )}
+
           {goldSignal.orders.length > 0 && (
             <div className="flex flex-col gap-2">
               <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#FF9500' }}>Ordini Suggeriti</p>
@@ -417,6 +308,14 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
           </p>
           <p className="text-sm font-bold">
             €{equityATH.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </p>
+          {/* The drawdown sensor is gone, but this number still drives two
+              rules, so it stays visible together with what it changes. */}
+          <p className="text-[11px] mt-1" style={{ color: equityDrawdown <= DRAWDOWN_ALERT ? '#D70015' : 'var(--text-secondary)' }}>
+            Distanza dal massimo: {(equityDrawdown * 100).toFixed(1)}%
+            {equityDrawdown <= DRAWDOWN_ALERT
+              ? ' — sotto la soglia: manutenzione interna in pausa, l\'oro in eccesso va in azionario.'
+              : ` (sotto ${(DRAWDOWN_ALERT * 100).toFixed(0)}% la manutenzione interna si ferma)`}
           </p>
         </div>
       )}

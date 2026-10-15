@@ -2,12 +2,32 @@
  * Smart PAC rebalancing: allocate budget proportionally to underweight ETFs,
  * and recursively consume leftover cash to ensure maximum budget efficiency.
  */
+/**
+ * ETFs that take part in the PAC: Vault B ones that are either targeted or
+ * still held. A "legacy" ETF (target 0) you no longer own cannot change the
+ * result, so it is left out: no row in the UI, no price needed. If you still
+ * hold it, it stays in: its value is part of the portfolio the weights refer to,
+ * and with target 0 the algorithm never buys more of it.
+ * Shared with PacCalculator so the UI and the algorithm use the same list.
+ */
+export function pacTickers(allTickers, holdings) {
+  return allTickers.filter(t => t.vault === 'B' && (t.target_weight > 0 || (holdings[t.ticker] || 0) > 0))
+}
+
 export function calculatePac(budget, holdings, prices, ObjectTickers) {
   let available = budget
-  const tickers = ObjectTickers.filter(t => t.vault === 'B')
-  const validTickers = tickers.filter(t => (prices[t.ticker] || 0) > 0)
+  const tickers = pacTickers(ObjectTickers, holdings)
 
-  if (validTickers.length === 0) return { buys: [], deviations: [] }
+  // Refuse to compute if ANY target ETF has no price.
+  // The old version silently dropped those ETFs and spread the whole budget
+  // over the others: a plausible-looking but wrong order list. With a missing
+  // price we cannot know the portfolio's true weights, so the only honest
+  // answer is "I need that price first" (the UI lets you type it in).
+  const missing = tickers.filter(t => !((prices[t.ticker] || 0) > 0)).map(t => t.ticker)
+  if (missing.length > 0) return { buys: [], deviations: [], missing }
+
+  const validTickers = tickers
+  if (validTickers.length === 0) return { buys: [], deviations: [], missing: [] }
 
   const portfolioValue = validTickers.reduce(
     (sum, t) => sum + (holdings[t.ticker] || 0) * prices[t.ticker],
@@ -65,7 +85,10 @@ export function calculatePac(budget, holdings, prices, ObjectTickers) {
       const newVal = t.currentVal + (boughtShares * t.price);
       const newDeficit = totalAfter * t.target_weight - newVal;
 
-      if (newDeficit > maxDeficitVal && currentAvailable >= t.price) {
+      // target_weight > 0: this loop picks the LARGEST deficit even when all
+      // deficits are negative, so without the check it could buy a legacy ETF
+      // (target 0) you are phasing out.
+      if (t.target_weight > 0 && newDeficit > maxDeficitVal && currentAvailable >= t.price) {
         maxDeficitVal = newDeficit;
         maxDeficitETF = t;
       }
@@ -93,5 +116,5 @@ export function calculatePac(budget, holdings, prices, ObjectTickers) {
   // Sort descending by cost so the biggest buys appear first
   buys.sort((a, b) => b.cost - a.cost)
 
-  return { buys, deviations: etfStats.map(t => ({ ticker: t.ticker, deviation: t.deviation })) }
+  return { buys, deviations: etfStats.map(t => ({ ticker: t.ticker, deviation: t.deviation })), missing: [] }
 }

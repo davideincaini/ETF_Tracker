@@ -7,7 +7,7 @@ const modes = [
   { id: 'manual', label: 'Buy / Sell' },
 ]
 
-export default function PacPage({ tickers, holdings, prices, onConfirm, onManualTrade, loading }) {
+export default function PacPage({ tickers, holdings, prices, priceMetadata, onConfirm, onManualTrade, loading }) {
   const [mode, setMode] = useState('smart')
 
   return (
@@ -38,6 +38,7 @@ export default function PacPage({ tickers, holdings, prices, onConfirm, onManual
           tickers={tickers}
           holdings={holdings}
           prices={prices}
+          priceMetadata={priceMetadata}
           onConfirm={onConfirm}
           loading={loading}
         />

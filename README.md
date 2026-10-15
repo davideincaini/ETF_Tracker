@@ -70,9 +70,39 @@ The no-sell constraint means the portfolio converges toward target weights asymp
 | Charts | Recharts |
 | Icons | Lucide React |
 | PWA | vite-plugin-pwa (installable on iOS) |
-| Data | Yahoo Finance API (EOD prices) |
-| Deploy | Vercel (auto-deploy on push to main) |
+| Data | Yahoo Finance, fetched server-side by a GitHub Action (see below) |
+| Deploy | GitHub Pages (auto-deploy on push to main) |
 | CI/CD | GitHub Actions |
+
+---
+
+## Market Data Pipeline
+
+The app never calls a third-party API from the browser. Until October 2026 it fetched Yahoo Finance through free public CORS proxies; when all of them shut down at once, the app broke without any code change. Prices are now produced by the repository itself:
+
+```
+GitHub Actions (Mon–Fri 17:23 UTC, or on demand)
+  └─ scripts/update_market_data.py   Python, standard library only
+       ├─ downloads price + full daily history per ticker in src/data/tickers.json
+       ├─ validates: price > 0, currency EUR, move < 25% vs last run
+       ├─ on any failure keeps the last good value, labelled stale/rejected
+       └─ writes public/data/prices.json + history.json  → committed → deployed
+PWA
+  └─ reads /data/*.json from its own origin (service worker: network-first, offline copy)
+```
+
+Failure modes are designed to be visible, never silent:
+
+| What fails | What you see | What to do |
+|---|---|---|
+| Yahoo down or blocking | Actions run turns red + email; app keeps last prices and shows their date | Usually nothing: the next run catches up |
+| Scheduled runs stop (e.g. GitHub pauses them after inactivity) | Banner "Prezzi fermi al …" after 4 days | Actions tab → re-enable the workflow |
+| A price is missing or old when you run the PAC | PAC refuses to compute / warns, price panel opens | Type the current price from your broker |
+| A split makes a price jump > 25% | Price marked "rejected", last value kept | Actions → *Run workflow* with `accept_jumps` ticked |
+
+**Refresh prices now:** Actions → *Update data & deploy* → *Run workflow* (also works from the GitHub mobile app).
+**Known data gap:** Yahoo has no history for `SGLN.MI` (price only), so gold has no chart/ATH and the Monte Carlo models it with zero return and zero volatility (like cash).
+**Tests:** `python3 -m unittest discover -s scripts`
 
 ---
 
@@ -82,9 +112,11 @@ The no-sell constraint means the portfolio converges toward target weights asymp
 src/
 ├── components/     # Dashboard, PAC calculator, chart wrappers
 ├── hooks/          # usePortfolio, usePrices, usePAC
-├── utils/          # PAC algorithm, rebalancing logic
+├── utils/          # PAC algorithm, rebalancing logic, market data access
+├── data/tickers.json  # ETF configuration: tickers, targets, thresholds
 └── App.jsx
-tickers.json        # ETF configuration: tickers, targets, cost basis
+scripts/            # market data updater (Python) + its tests
+public/data/        # prices.json, history.json — generated, do not edit by hand
 ```
 
 ---
