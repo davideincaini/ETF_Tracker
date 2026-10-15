@@ -5,9 +5,17 @@
 export function calculatePac(budget, holdings, prices, ObjectTickers) {
   let available = budget
   const tickers = ObjectTickers.filter(t => t.vault === 'B')
-  const validTickers = tickers.filter(t => (prices[t.ticker] || 0) > 0)
 
-  if (validTickers.length === 0) return { buys: [], deviations: [] }
+  // Refuse to compute if ANY target ETF has no price.
+  // The old version silently dropped those ETFs and spread the whole budget
+  // over the others: a plausible-looking but wrong order list. With a missing
+  // price we cannot know the portfolio's true weights, so the only honest
+  // answer is "I need that price first" (the UI lets you type it in).
+  const missing = tickers.filter(t => !((prices[t.ticker] || 0) > 0)).map(t => t.ticker)
+  if (missing.length > 0) return { buys: [], deviations: [], missing }
+
+  const validTickers = tickers
+  if (validTickers.length === 0) return { buys: [], deviations: [], missing: [] }
 
   const portfolioValue = validTickers.reduce(
     (sum, t) => sum + (holdings[t.ticker] || 0) * prices[t.ticker],
@@ -93,5 +101,5 @@ export function calculatePac(budget, holdings, prices, ObjectTickers) {
   // Sort descending by cost so the biggest buys appear first
   buys.sort((a, b) => b.cost - a.cost)
 
-  return { buys, deviations: etfStats.map(t => ({ ticker: t.ticker, deviation: t.deviation })) }
+  return { buys, deviations: etfStats.map(t => ({ ticker: t.ticker, deviation: t.deviation })), missing: [] }
 }

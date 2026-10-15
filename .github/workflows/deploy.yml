@@ -1,35 +1,145 @@
-name: Deploy to GitHub Pages
+# Update market data & deploy to GitHub Pages
+#
+# HOW IT FITS TOGETHER
+#   update-data  -> runs scripts/update_market_data.py, commits public/data/*.json
+#   build        -> npm build (the JSON files in public/ are copied into dist/)
+#   deploy       -> publishes dist/ to GitHub Pages
+#   report       -> turns the run red if the data step had problems, AFTER deploying
+#
+# WHY THREE SEPARATE JOBS (security)
+#   Each job gets only the permissions it needs. The build job runs `npm ci`,
+#   i.e. code from hundreds of third-party packages: it gets a READ-ONLY token
+#   and no stored credentials, so a compromised package cannot push to the repo
+#   or publish the site. Only the small, dependency-free Python job can write.
+
+name: Update data & deploy
 
 on:
   push:
     branches: [main]
+  schedule:
+    # Mon–Fri at 17:23 UTC: after the 17:30 CET close of Milan, Paris and Xetra
+    # (18:23 Italian winter time, 19:23 summer time). Cron is always UTC.
+    # The odd minute avoids :00, when GitHub delays scheduled runs the most.
+    - cron: '23 17 * * 1-5'
+  # "Run workflow" button in the Actions tab (also in the GitHub mobile app):
+  # use it to refresh prices on demand, e.g. right before a PAC.
+  workflow_dispatch:
+    inputs:
+      accept_jumps:
+        description: 'Accept price moves above 25% (use once, only after a split)'
+        type: boolean
+        default: false
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
+# Queue runs instead of cancelling them: cancelling a run halfway could drop a
+# data commit or leave a half-finished deployment.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
+
+# Default for every job: no permissions at all. Each job opts in below.
+permissions: {}
 
 jobs:
-  build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  update-data:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write          # needed to commit the refreshed JSON files
+    outputs:
+      tests: ${{ steps.tests.outcome }}
+      fetch: ${{ steps.fetch.outcome }}
     steps:
       - uses: actions/checkout@v4
+
+      # The runner already has Python 3; the script uses only the standard
+      # library, so there is nothing to install.
+      - name: Test the data script
+        id: tests
+        continue-on-error: true   # a broken script must not block app deploys
+        run: python3 -m unittest discover -s scripts -v
+
+      - name: Fetch and validate market data
+        id: fetch
+        # Never run an untested script against live data.
+        if: steps.tests.outcome == 'success'
+        continue-on-error: true   # keep going: partial data is still published
+        env:
+          EVENT: ${{ github.event_name }}
+          ACCEPT_JUMPS: ${{ inputs.accept_jumps }}
+        run: |
+          args=""
+          # On a code push we only fetch if the data files don't exist yet
+          # (first deploy). Otherwise every push would add a bot commit.
+          if [ "$EVENT" = "push" ]; then args="--only-if-missing"; fi
+          if [ "$ACCEPT_JUMPS" = "true" ]; then args="$args --accept-jumps"; fi
+          python3 scripts/update_market_data.py $args
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data
+          if git diff --cached --quiet; then
+            echo "No data changes to commit."
+            exit 0
+          fi
+          git commit -m "data: market update $(date -u +%Y-%m-%d)"
+          # If you pushed code while this ran, rebase on top of it and retry.
+          # Only this job touches public/data, so the rebase cannot conflict.
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          echo "::error::Could not push the data commit after 3 attempts."
+          exit 1
+
+  build:
+    needs: update-data
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The branch tip, so the data commit made by update-data is included.
+          ref: ${{ github.ref }}
+          # Do not leave the token in .git/config where npm scripts could read it.
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
-      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write             # publish to GitHub Pages
+      id-token: write          # prove to Pages that this run is genuine (OIDC)
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Runs last so the site is always deployed first. If the data step had any
+  # problem, this job fails, the run shows red, and GitHub emails you.
+  report:
+    needs: [update-data, deploy]
+    if: always() && (needs.update-data.outputs.tests == 'failure' || needs.update-data.outputs.fetch == 'failure')
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - env:
+          TESTS: ${{ needs.update-data.outputs.tests }}
+          FETCH: ${{ needs.update-data.outputs.fetch }}
+        run: |
+          echo "::error::Market data problem — script tests: $TESTS, fetch: $FETCH. See the update-data job summary. The app keeps the last good prices and shows their age."
+          exit 1

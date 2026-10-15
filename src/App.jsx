@@ -6,7 +6,8 @@ import RebalancePage from './pages/RebalancePage'
 import PerformancePage from './pages/PerformancePage'
 import MonteCarloPage from './pages/MonteCarloPage'
 import { usePortfolio } from './hooks/usePortfolio'
-import { fetchAllPrices, fetchAllHistory, clearPriceCache } from './utils/api'
+import { fetchAllPrices, fetchAllHistory, refreshMarketData } from './utils/api'
+import DataFreshnessBanner from './components/DataFreshnessBanner'
 import { calculatePerAssetATH } from './utils/rebalance'
 import allTickers from './data/tickers.json'
 import portfolios from './data/portfolios.json'
@@ -16,6 +17,8 @@ export default function App() {
   const [tab, setTab] = useState('dashboard')
   const [prices, setPrices] = useState({})
   const [priceMetadata, setPriceMetadata] = useState({})
+  // true when prices come from the offline copy because the server was unreachable
+  const [pricesOffline, setPricesOffline] = useState(false)
   const [history, setHistory] = useState({})
   const [loading, setLoading] = useState(true)
   const [resetPhase, setResetPhase] = useState(0)
@@ -56,7 +59,10 @@ export default function App() {
 
   const loadPrices = useCallback(async (force = false) => {
     setLoading(true)
-    if (force) clearPriceCache()
+    // The old code deleted the price cache BEFORE downloading: if the download
+    // then failed, every price went to zero. Now we only drop the in-memory copy
+    // and keep everything on disk until new data has actually arrived.
+    if (force) refreshMarketData()
     try {
       const [priceData, h] = await Promise.all([
         fetchAllPrices(augmentedTickers),
@@ -64,6 +70,7 @@ export default function App() {
       ])
       setPrices(priceData.prices)
       setPriceMetadata(priceData.metadata)
+      setPricesOffline(priceData.offline)
       setHistory(h)
     } catch (e) {
       console.error('Failed to load prices', e)
@@ -103,6 +110,7 @@ export default function App() {
         if (!cancelled) {
           setPrices(priceData.prices)
           setPriceMetadata(priceData.metadata)
+          setPricesOffline(priceData.offline)
           setHistory(h)
         }
       } catch (e) {
@@ -240,6 +248,15 @@ export default function App() {
         </div>
       </header>
 
+      {/* Data health: visible on every tab, silent when everything is fine */}
+      {!loading && (
+        <DataFreshnessBanner
+          tickers={augmentedTickers}
+          priceMetadata={priceMetadata}
+          offline={pricesOffline}
+        />
+      )}
+
       {/* Pages */}
       {tab === 'dashboard' && (
         <Dashboard
@@ -261,6 +278,7 @@ export default function App() {
           tickers={augmentedTickers}
           holdings={portfolio.holdings}
           prices={prices}
+          priceMetadata={priceMetadata}
           onConfirm={portfolio.addTransactions}
           onManualTrade={portfolio.manualTrade}
           loading={loading}

@@ -3,3 +3,5 @@ dist
 .DS_Store
 Screenshot*
 node_modules
+__pycache__/
+*.pyc

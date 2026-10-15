@@ -1,13 +1,17 @@
 import { TrendingUp, TrendingDown, Eye } from 'lucide-react'
+import { summarizePriceStatus, formatPriceDate } from '../utils/priceStatus'
 
-export default function PortfolioCard({ totalValue, invested, loading, priceMetadata = {}, prices = {} }) {
+export default function PortfolioCard({ totalValue, invested, loading, priceMetadata = {} }) {
   const pl = totalValue - invested
   const plPct = invested > 0 ? (pl / invested) * 100 : 0
   const isUp = pl >= 0
 
-  // Check if any prices are stale or unavailable
-  const stalePrices = Object.values(priceMetadata).filter(m => m?.stale).length
-  const unavailablePrices = Object.entries(prices).filter(([_, p]) => !p || p === 0).length
+  // Count problems from the metadata, not from `prices`: a missing price is now
+  // ABSENT from `prices` (never a fake 0), so counting zeros would find nothing.
+  const allTickers = Object.keys(priceMetadata).map((ticker) => ({ ticker }))
+  const { missing, stale, newest } = summarizePriceStatus(allTickers, priceMetadata)
+  const unavailablePrices = missing.length
+  const stalePrices = stale.length
 
   return (
     <div
@@ -44,7 +48,9 @@ export default function PortfolioCard({ totalValue, invested, loading, priceMeta
           </span>
           {(stalePrices > 0 || unavailablePrices > 0) && (
             <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: '#FFF3CD', color: '#856404' }}>
-              {unavailablePrices > 0 ? `${unavailablePrices} price${unavailablePrices > 1 ? 's' : ''} unavailable` : `${stalePrices} cached`}
+              {unavailablePrices > 0
+                ? `${unavailablePrices} prezz${unavailablePrices > 1 ? 'i' : 'o'} mancant${unavailablePrices > 1 ? 'i' : 'e'}`
+                : `${stalePrices} da verificare`}
             </span>
           )}
         </div>
@@ -53,6 +59,12 @@ export default function PortfolioCard({ totalValue, invested, loading, priceMeta
           Start investing to track your returns
         </p>
       ) : null}
+      {/* Always say how old the numbers are: a total without a date is a guess */}
+      {!loading && newest && (
+        <p className="text-[10px] mt-2" style={{ color: 'var(--text-secondary)' }}>
+          Prezzi al {formatPriceDate(newest)}
+        </p>
+      )}
     </div>
   )
 }
