@@ -284,6 +284,13 @@ export default function RebalancePage({ tickers, holdings, prices, getPortfolioV
             </div>
           </div>
 
+          {/* Below the band there is nothing to sell: the monthly PAC fixes it */}
+          {goldSignal.handledByPac && (
+            <div className="p-3.5 rounded-2xl text-xs leading-snug" style={{ background: '#FFF4E5', color: '#A25F00' }}>
+              Oro sotto il {(GOLD_LOWER_BAND * 100).toFixed(0)}%: nessuna vendita necessaria. Il prossimo PAC indirizzerà i nuovi versamenti verso l'oro finché non torna vicino al {(GOLD_TARGET * 100).toFixed(0)}%.
+            </div>
+          )}
+
           {goldSignal.orders.length > 0 && (
             <div className="flex flex-col gap-2">
               <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#FF9500' }}>Ordini Suggeriti</p>

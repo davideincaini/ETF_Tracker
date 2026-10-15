@@ -10,7 +10,8 @@
  * Sensors:
  *   B. Euphoria Sensor — taglia eccedenza azionaria quando peso ≥ 78%
  *   C. Internal Maintenance — ribilanciamento a somma zero tra equity ETFs
- *   D. Gold Shield — bande 7%–15% per SGLN
+ *   D. Gold Shield — bande 7%–15% per SGLN: sopra il 15% vende l'eccesso;
+ *      sotto il 7% nessun ordine, lo riporta in banda il PAC mensile
  *
  * Removed in October 2026: the "A. Drawdown Sensor", which sold a cash bunker
  * (C3M) in three "bullets" during equity crashes. The defensive 20% is now a
@@ -327,37 +328,14 @@ function computeGoldSignal({ goldWeight, goldValue, totalValue, goldETF, defensi
   const isHigh = goldWeight >= GOLD_UPPER_BAND
   const orders = []
 
-  if (!goldETF) return { isLow: false, isHigh: false, goldWeight, orders }
+  if (!goldETF) return { isLow: false, isHigh: false, handledByPac: false, goldWeight, orders }
 
-  if (isLow && defensiveETF && totalValue > 0) {
-    // Fund the gold top-up by selling part of the defensive ETF, back to 10%
-    const targetGoldValue = totalValue * GOLD_TARGET
-    const deficit = targetGoldValue - goldValue
-    const goldPrice = prices[goldETF.ticker] || 0
-
-    if (deficit > 0 && goldPrice > 0) {
-      const sharesToBuy = Math.floor(deficit / goldPrice)
-      const defensiveSharesToSell = Math.ceil(deficit / (prices[defensiveETF.ticker] || 1))
-
-      if (sharesToBuy > 0) {
-        orders.push({
-          type: 'sell',
-          ticker: defensiveETF.ticker,
-          name: defensiveETF.name,
-          shares: defensiveSharesToSell,
-          amount: deficit,
-          reason: `Prelievo da ${shortTicker(defensiveETF.ticker)} per Scudo Oro`,
-        })
-        orders.push({
-          type: 'buy',
-          ticker: goldETF.ticker,
-          shares: sharesToBuy,
-          amount: sharesToBuy * goldPrice,
-          reason: 'Ricostituzione Scudo Oro al 10%',
-        })
-      }
-    }
-  }
+  // Gold below the band: NO orders. This portfolio is fed by a monthly PAC,
+  // and the PAC already sends new money to whatever is furthest below target,
+  // so selling another asset to buy gold would only add costs (commissions,
+  // taxes on gains) for a gap the next contribution closes anyway.
+  // The UI shows `handledByPac` as a note instead of orders.
+  const handledByPac = isLow
 
   if (isHigh && totalValue > 0) {
     // Sell gold excess
@@ -403,7 +381,7 @@ function computeGoldSignal({ goldWeight, goldValue, totalValue, goldETF, defensi
     }
   }
 
-  return { isLow, isHigh, goldWeight, orders }
+  return { isLow, isHigh, handledByPac, goldWeight, orders }
 }
 
 // ─── Time Window ────────────────────────────────────────────────────
