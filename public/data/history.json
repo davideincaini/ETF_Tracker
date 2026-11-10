@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generated_at": "2026-11-06T22:11:44Z",
+  "generated_at": "2026-11-10T00:44:52Z",
   "tickers": {
     "C3M.PA": {
       "status": "ok",
@@ -16801,7 +16801,7 @@
       "status": "insufficient",
       "error": null,
       "points": [
-        ["2026-11-06", 70.66]
+        ["2026-11-09", 71.28]
       ]
     },
     "XDPU.MI": {
