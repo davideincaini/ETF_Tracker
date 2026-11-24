@@ -1,62 +1,62 @@
 {
   "schema": 1,
-  "generated_at": "2026-11-20T23:11:46Z",
+  "generated_at": "2026-11-24T03:22:34Z",
   "source": "Yahoo Finance chart API (via GitHub Actions)",
   "tickers": {
     "C3M.PA": {
-      "price": 127.82,
+      "price": 127.77,
       "currency": "EUR",
-      "market_time": "2026-11-20T16:35:07Z",
-      "fetched_at": "2026-11-20T23:11:46Z",
+      "market_time": "2026-11-23T16:35:24Z",
+      "fetched_at": "2026-11-24T03:22:34Z",
       "status": "ok"
     },
     "EIMI.MI": {
-      "price": 40.96,
+      "price": 43.775,
       "currency": "EUR",
-      "market_time": "2026-11-20T16:35:11Z",
-      "fetched_at": "2026-11-20T23:11:46Z",
+      "market_time": "2026-11-23T16:35:14Z",
+      "fetched_at": "2026-11-24T03:22:34Z",
       "status": "ok"
     },
     "EM710.MI": {
-      "price": 165.03,
+      "price": 165.58,
       "currency": "EUR",
-      "market_time": "2026-11-20T16:35:00Z",
-      "fetched_at": "2026-11-20T23:11:46Z",
+      "market_time": "2026-11-23T16:35:05Z",
+      "fetched_at": "2026-11-24T03:22:34Z",
       "status": "ok"
     },
     "EXUS.MI": {
-      "price": 38.53,
+      "price": 39.4,
       "currency": "EUR",
-      "market_time": "2026-11-20T16:35:00Z",
-      "fetched_at": "2026-11-20T23:11:46Z",
+      "market_time": "2026-11-23T16:35:22Z",
+      "fetched_at": "2026-11-24T03:22:34Z",
       "status": "ok"
     },
     "IUSQ.DE": {
-      "price": 102.04,
+      "price": 105.68,
       "currency": "EUR",
-      "market_time": "2026-11-20T16:36:01Z",
-      "fetched_at": "2026-11-20T23:11:46Z",
+      "market_time": "2026-11-23T16:36:00Z",
+      "fetched_at": "2026-11-24T03:22:34Z",
       "status": "ok"
     },
     "SGLN.MI": {
-      "price": 62.62,
+      "price": 65.41,
       "currency": "EUR",
-      "market_time": "2026-11-20T16:35:24Z",
-      "fetched_at": "2026-11-20T23:11:46Z",
+      "market_time": "2026-11-23T16:29:22Z",
+      "fetched_at": "2026-11-24T03:22:34Z",
       "status": "ok"
     },
     "XDPU.MI": {
-      "price": 12.502,
+      "price": 12.94,
       "currency": "EUR",
-      "market_time": "2026-11-20T16:35:42Z",
-      "fetched_at": "2026-11-20T23:11:46Z",
+      "market_time": "2026-11-23T16:35:16Z",
+      "fetched_at": "2026-11-24T03:22:34Z",
       "status": "ok"
     },
     "XEON.MI": {
-      "price": 150.862,
+      "price": 150.894,
       "currency": "EUR",
-      "market_time": "2026-11-20T16:35:03Z",
-      "fetched_at": "2026-11-20T23:11:46Z",
+      "market_time": "2026-11-23T16:39:17Z",
+      "fetched_at": "2026-11-24T03:22:34Z",
       "status": "ok"
     }
   }
